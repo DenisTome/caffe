@@ -7,18 +7,17 @@ Created on Tue Jun  7 11:32:59 2016
 
 import re
 import matplotlib.pyplot as plt
+import json
 import stat
 from mpldatacursor import datacursor
 
-def parse_log(path_to_log):
+def parse_log(path_to_log, val_filename = []):
     """Parse log file"""
 
     regex_base_lr = re.compile('base_lr: ([\.\deE+-]+)')
     regex_stepsize = re.compile('stepsize: (\d+)')
     regex_iteration = re.compile('Iteration (\d+)')
     regex_train_output = re.compile('Train net output #(\d+): (\S+) = ([\.\deE+-]+)')
-    regex_test_output = re.compile('Test net output #(\d+): (\S+) = ([\.\deE+-]+)')
-    #regex_learning_rate = re.compile('lr = ([-+]?[0-9]*\.?[0-9]+([eE]?[-+]?[0-9]+)?)')
     regex_loss = re.compile('loss = ([-+]?[0-9]*\.?[0-9]+([eE]?[-+]?[0-9]+)?)')
 
     # Pick out lines of interest
@@ -26,7 +25,6 @@ def parse_log(path_to_log):
     base_lr = -1
     stepsize = -1
     train_data = dict([('iteration',[]), ('loss_iter',[]), ('loss_stage',[]), ('stage',[])])
-    test_data = dict([('iteration',[]), ('loss_iter',[]), ('loss_stage',[]), ('stage',[])])
 
     with open(path_to_log) as f:
         
@@ -51,9 +49,14 @@ def parse_log(path_to_log):
                 loss_value = float(regex_loss_match.group(1))
 
             train_data = parse_line(regex_train_output, train_data, line, loss_value, iteration)
-            test_data = parse_line(regex_test_output, test_data, line, loss_value, iteration)
-
-    return train_data, test_data, base_lr, stepsize
+    
+    if not val_filename:
+        val_data = dict([('iteration',[]), ('loss_iter',[]), ('loss_stage',[]), ('mpepj',[]), ('stage',[])])
+    else:
+        with open(val_filename) as infile:
+            val_data = json.load(infile)
+    
+    return train_data, val_data, base_lr, stepsize
 
 
 def parse_line(regex_obj, data, line, loss_iter, iteration):
@@ -89,12 +92,14 @@ def combine_data(train, test, new_train, new_test, merge):
         train['loss_iter'].append(new_train['loss_iter'][i])
         train['loss_stage'].append(new_train['loss_stage'][i])
         train['stage'].append(new_train['stage'][i])
+        
     if (len(test['iteration']) > 0):
         last_iter = test['iteration'][-1] + 1
         for i in range(len(new_test)):
             test['iteration'].append(last_iter + new_test['iteration'][i])
             test['loss_iter'].append(new_test['loss_iter'][i])
             test['loss_stage'].append(new_test['loss_stage'][i])
+            test['mpepj'].append(new_test['mpepj'][i])
             test['stage'].append(new_test['stage'][i])
     return train, test
 
@@ -131,7 +136,7 @@ def mergeLogFiles(filenames, out_filename, merge):
     out_file.close()
     
 
-def plotData(train, test, nstages, main_title, avg_line = False, avg_batch_size = 5):
+def plotData(train, val, nstages, main_title, avg_line = False, avg_batch_size = 5):
     x = []
     y = []
     count = 0
@@ -178,7 +183,37 @@ def plotData(train, test, nstages, main_title, avg_line = False, avg_batch_size 
     plt.legend(loc='upper right')
     plt.suptitle(main_title, size=14, fontweight='bold')
     datacursor(bbox=None, display='single', formatter="Iter:{x:.0f}\nLoss:{y:.2f}".format)
-    plt.show()       
+    plt.show()
+
+    if (len(val['iteration']) == 0):
+        return
+        
+    x = []
+    y_loss = []
+    y_mpepj = []
+    count = 0
+    for i in val['stage']:
+        if i == 1:
+            x.append(val['iteration'][count])
+            y_loss.append(val['loss_iter'][count])
+            y_mpepj.append(val['mpepj'][count])
+        count += 1
+    
+    fig = plt.figure()
+    sp1 = fig.add_subplot(211)
+    sp1.plot(x,y_loss,'r-', linewidth=2.0, label='Val')
+    plt.xlabel('NUM ITERATIONS')
+    plt.ylabel('SUM OF LOSS VAL SET')
+    plt.grid()
+    plt.legend(loc='upper right')
+    
+    sp2 = fig.add_subplot(212)
+    sp2.plot(x,y_mpepj,'r-', linewidth=2.0, label='Val')
+    plt.xlabel('NUM ITERATIONS')
+    plt.ylabel('Mean Pixel Error Per Joint')
+    plt.grid()
+    plt.legend(loc='upper right')
+    plt.suptitle('Model results on the validation set', size=14, fontweight='bold')
     
 
 def main():
@@ -186,20 +221,22 @@ def main():
     #filename = ['prototxt/caffemodel/trial_3/log.txt','prototxt/log.txt']
     #filename = ['prototxt/log1.txt','prototxt/log.txt']
     #filename = ['prototxt/log.txt']
+    #val_filename = ['prototxt/caffemodel/trial_5/validation.json']
+    val_filename = []
     stn_lrm = 1
     nstages = 6
     merge = [50000, 0]
     finetune_iter = 5000
     #merge = [0]
-    train, test, base_lr, stepsize = parse_log(filename[0])
+    train, val, base_lr, stepsize = parse_log(filename[0], val_filename)
     print 'Num iterations file = %d' % (train['iteration'][-1])
     if (len(filename) > 1):
         for i in range(1,len(filename)):
-            curr_tr, curr_ts, base_lr_, stepsize_ = parse_log(filename[i])
+            curr_tr, curr_ts, base_lr_, stepsize_ = parse_log(filename[i], val_filename[i])
             print 'Num iterations file = %d' % (curr_tr['iteration'][-1])
-            train, test = combine_data(train, test, curr_tr, curr_ts, merge[i-1])
+            train, val = combine_data(train, val, curr_tr, curr_ts, merge[i-1])
     main_title = 'Training with:\nbase_lr = %f; stepsize = %d; lr_mul = %d\nFinetuning: trial_2; Iter = %d ' % (base_lr, stepsize, stn_lrm, finetune_iter)
-    plotData(train, test, nstages, main_title, avg_line = True, avg_batch_size = 500)
+    plotData(train, val, nstages, main_title, avg_line = True, avg_batch_size = 500)
     
     mergeLogFiles(filename,'prototxt/overall.txt', merge)
 
