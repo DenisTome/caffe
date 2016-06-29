@@ -7,7 +7,7 @@ Created on Wed Jun 29 15:33:08 2016
 
 import caffe
 import numpy as np
-#import yaml
+import yaml
 
 class MyCustomLayer(caffe.layers):
     
@@ -18,6 +18,7 @@ class MyCustomLayer(caffe.layers):
         if (len(top) != 1):
             raise Exception('This layer produces only one output blob')
         # TODO: check if it needs conversion
+        self.num_joints = yaml.load(self.param_str)["njoints"]
         self.num_joints = self.njoints + 1
         print 'number of joints is %d' % self.num_joints
         # TODO: check that it works
