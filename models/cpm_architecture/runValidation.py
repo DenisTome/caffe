@@ -96,7 +96,9 @@ def generateHeatMaps(center, joints):
     # heatmaps representing the position of the joints
     for i in range(num_joints):
         heatMaps[:,:,i] = generateGaussian(pos, joints[i], Sigma)
-        heatMaps[:,:,-1] = np.sum([heatMaps[:,:,-1], heatMaps[:,:,i]], axis=0)
+    # generating last heat maps which contains all joint positions
+    joints_heatmaps = heatMaps[:,:,0:heatMaps.shape[2]-1]
+    heatMaps[:,:,-1] = joints_heatmaps.max(axis=2)
     
     # heatmap to be added to the RGB image
     center_hm = np.zeros((inputSizeNN,inputSizeNN,1))
