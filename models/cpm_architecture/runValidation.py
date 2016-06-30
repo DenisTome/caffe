@@ -96,7 +96,9 @@ def generateHeatMaps(center, joints):
     # heatmaps representing the position of the joints
     for i in range(num_joints):
         heatMaps[:,:,i] = generateGaussian(pos, joints[i], Sigma)
-        heatMaps[:,:,-1] = np.sum([heatMaps[:,:,-1], heatMaps[:,:,i]], axis=0)
+    # generating last heat maps which contains all joint positions
+    joints_heatmaps = heatMaps[:,:,0:heatMaps.shape[2]-1]
+    heatMaps[:,:,-1] = joints_heatmaps.max(axis=2)
     
     # heatmap to be added to the RGB image
     center_hm = np.zeros((inputSizeNN,inputSizeNN,1))
@@ -267,7 +269,7 @@ def main():
     caffe_dir = os.environ.get('CAFFE_HOME_CPM')
     json_file = '%s/models/cpm_architecture/jsonDatasets/H36M_annotations.json' % caffe_dir
     caffe_models_dir = '%s/models/cpm_architecture/prototxt/caffemodel/trial_5/' % caffe_dir
-    output_file = '%svalidation.json' % caffe_models_dir
+    output_file = '%svalidation_tmp.json' % caffe_models_dir
     
     loss = getLossOnValidationSet(json_file, caffe_models_dir)
     
