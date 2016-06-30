@@ -53,10 +53,12 @@ class MyCustomLayer(caffe.Layer):
         x, y = np.mgrid[0:self.input_size, 0:self.input_size]
         pos = np.dstack((x, y))
         
-        for i in range(self.num_joints):
+        for i in range(self.num_joints - 1):
             heatMaps[i,:,:] = self.generateGaussian(pos, points[i,:], Sigma)
-            
-        # TODO: compute the last heat maps considering the maximum to be 1 (as in caffe code)
+        # generating last heat maps which contains all joint positions
+        joints_heatmaps = heatMaps[:,:,0:heatMaps.shape[2]-1]
+        # TODO check that it's correct
+        heatMaps[:,:,-1] = joints_heatmaps.max(axis=2)
         return heatMaps
     
     def manifoldDataConversion(self, points):
