@@ -1,8 +1,5 @@
-import sys
 import os
 import math
-import argparse
-import json
 import caffe
 from caffe import layers as L  # pseudo module using __getattr__ magic to generate protobuf messages
 from caffe import params as P  # pseudo module using __getattr__ magic to generate protobuf messages
@@ -45,13 +42,12 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
     last_layer = 'image'
     stage = 1
     conv_counter = 1
+    last_manifold = 'NONE'
     pool_counter = 1
     drop_counter = 1
     state = 'image' # can be image or fuse
     share_point = 0
 
-    # TODO: first and last layer of each stage must be changed to account for a larger number of inputs and outputs
-    # TODO: add functionality to replicate data layer for train and validation phases
     for l in range(0, len(layername)):
         if layername[l] == 'C':
             if state == 'image':
@@ -65,10 +61,14 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             if ((stage == 1 and conv_counter == 7) or
                 (stage > 1 and state != 'image' and (conv_counter in [1, 5]))):
                 conv_name = '%s_new' % conv_name
-                lr_m = 1 # changed -> it used to be 5 for stage 1 and 1 for stage n
+                lr_m = 1e-3# 1 # changed -> using original model
             else:
                 # Set learning rate multiplier to 0 for all layers but the new one
                 lr_m = 1e-3 # 1e-3 (best res so far)
+            # additional for python layer
+            if (stage > 1 and state != 'image' and (conv_counter == 1)):
+                conv_name = '%s_new_mf' % conv_name
+                lr_m = 1
             n.tops[conv_name] = L.Convolution(n.tops[last_layer], kernel_size=kernel[l],
                                                   num_output=outCH[l], pad=int(math.floor(kernel[l]/2)),
                                                   param=[dict(lr_mult=lr_m, decay_mult=1), dict(lr_mult=lr_m*2, decay_mult=0)],
@@ -88,6 +88,9 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             n.tops['pool%d_stage%d' % (pool_counter, stage)] = L.Pooling(n.tops[last_layer], kernel_size=kernel[l], stride=stride[l], pool=P.Pooling.MAX)
             last_layer = 'pool%d_stage%d' % (pool_counter, stage)
             pool_counter += 1
+        elif layername[l] == 'M':
+            last_manifold = 'manifolds_stage%d' % stage
+            n.tops[last_manifold] = L.Python(n.tops[last_layer],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str='{"njoints": 17,"sigma": 1, "debug_mode": 0}'))#,loss_weight=1)
         elif layername[l] == 'L':
             # Loss: n.loss layer is only in training and testing nets, but not in deploy net.
             if deploy == False:
@@ -108,7 +111,7 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
                 n.tops['drop%d_stage%d' % (drop_counter, stage)] = L.Dropout(n.tops[last_layer], in_place=True, dropout_param=dict(dropout_ratio=0.5))
                 drop_counter += 1
         elif layername[l] == '@':
-            n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.pool_center_lower, concat_param=dict(axis=1))
+            n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.tops[last_manifold], n.pool_center_lower, concat_param=dict(axis=1))
             conv_counter = 1
             state = 'fuse'
             last_layer = 'concat_stage%d' % stage
@@ -117,7 +120,6 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
                 share_point = last_layer
             else:
                 last_layer = share_point
-
     # final process
     stage -= 1
     if stage == 1:
@@ -162,8 +164,8 @@ base_lr: %f\n\
 momentum: 0.9\n\
 weight_decay: 0.0005\n\
 # The learning rate policy\n\
-#lr_policy: "step"\n\
-lr_policy: "fixed"\n\
+lr_policy: "step"\n\
+#lr_policy: "fixed"\n\
 gamma: 0.333\n\
 #stepsize: %d\n\
 # Display every 100 iterations\n\
@@ -183,7 +185,7 @@ if __name__ == "__main__":
     path_in_caffe = 'models/cpm_architecture'
     directory = 'prototxt'
     dataFolder = '%s/lmdb/train' % (path_in_caffe)
-    stepsize = 45000 # stepsize to decrease learning rate. This should depend on your dataset size
+    stepsize = 50000 # stepsize to decrease learning rate. This should depend on your dataset size
     test_interval = 5000
     batch_size = 8
     numEpochs = 12
@@ -213,22 +215,28 @@ if __name__ == "__main__":
     if not os.path.exists(d_caffemodel):
         os.makedirs(d_caffemodel)
     
-    layername = ['C', 'P'] * nCP + ['C','C','D','C','D','C'] + ['L'] # first-stage
-    kernel =    [ 9,  3 ] * nCP + [ 5 , 9 , 0 , 1 , 0 , 1 ] + [0] # first-stage
-    outCH =     [128, 128] * nCP + [ 32,512, 0 ,512, 0 ,18 ] + [0] # first-stage
-    stride =    [ 1 ,  2 ] * nCP + [ 1 , 1 , 0 , 1 , 0 , 1 ] + [0] # first-stage
+    layername = ['C', 'P'] * nCP + ['C','C','D','C','D','C'] + ['M'] + ['L']# first-stage
+    kernel =    [ 9,  3 ] * nCP + [ 5 , 9 , 0 , 1 , 0 , 1 ] + [0] + [0] # first-stage
+    outCH =     [128, 128] * nCP + [ 32,512, 0 ,512, 0 ,18 ] + [0] + [0] # first-stage
+    stride =    [ 1 ,  2 ] * nCP + [ 1 , 1 , 0 , 1 , 0 , 1 ] + [0] + [0] # first-stage
 
     if stage >= 2:
-        layername += ['C', 'P'] * nCP + ['$'] + ['C'] + ['@'] + ['C'] * 5            + ['L']
-        outCH +=     [128, 128] * nCP + [ 0 ] + [32 ] + [ 0 ] + [128,128,128,128,18] + [ 0 ]
-        kernel +=    [ 9,   3 ] * nCP + [ 0 ] + [ 5 ] + [ 0 ] + [11, 11, 11, 1,   1] + [ 0 ]
-        stride +=    [ 1 ,  2 ] * nCP + [ 0 ] + [ 1 ] + [ 0 ] + [ 1 ] * 5            + [ 0 ]
+        layername += ['C', 'P'] * nCP + ['$'] + ['C'] + ['@'] + ['C'] * 5            + ['M'] + ['L']
+        outCH +=     [128, 128] * nCP + [ 0 ] + [32 ] + [ 0 ] + [128,128,128,128,18] + [ 0 ] + [ 0 ]
+        kernel +=    [ 9,   3 ] * nCP + [ 0 ] + [ 5 ] + [ 0 ] + [11, 11, 11, 1,   1] + [ 0 ] + [ 0 ]
+        stride +=    [ 1 ,  2 ] * nCP + [ 0 ] + [ 1 ] + [ 0 ] + [ 1 ] * 5            + [ 0 ] + [ 0 ]
 
         for s in range(3, stage+1):
-            layername += ['$'] + ['C'] + ['@'] + ['C'] * 5            + ['L']
-            outCH +=     [ 0 ] + [32 ] + [ 0 ] + [128,128,128,128,18] + [ 0 ]
-            kernel +=    [ 0 ] + [ 5 ] + [ 0 ] + [11, 11, 11,  1, 1 ] + [ 0 ]
-            stride +=    [ 0 ] + [ 1 ] + [ 0 ] + [ 1 ] * 5            + [ 0 ]
+            if (s != stage):
+                layername += ['$'] + ['C'] + ['@'] + ['C'] * 5            + ['M'] + ['L']
+                outCH +=     [ 0 ] + [32 ] + [ 0 ] + [128,128,128,128,18] + [ 0 ] + [ 0 ]
+                kernel +=    [ 0 ] + [ 5 ] + [ 0 ] + [11, 11, 11,  1, 1 ] + [ 0 ] + [ 0 ]
+                stride +=    [ 0 ] + [ 1 ] + [ 0 ] + [ 1 ] * 5            + [ 0 ] + [ 0 ]
+            else:
+                layername += ['$'] + ['C'] + ['@'] + ['C'] * 5            + ['L']
+                outCH +=     [ 0 ] + [32 ] + [ 0 ] + [128,128,128,128,18] + [ 0 ]
+                kernel +=    [ 0 ] + [ 5 ] + [ 0 ] + [11, 11, 11,  1, 1 ] + [ 0 ]
+                stride +=    [ 0 ] + [ 1 ] + [ 0 ] + [ 1 ] * 5            + [ 0 ]
 
     label_name = ['label_1st_lower', 'label_lower']
     writePrototxts(dataFolder, directory, batch_size, stepsize, layername, kernel, stride, outCH, transform_param, base_lr, d_caffemodel, label_name, test_iter, test_interval, maxiter)

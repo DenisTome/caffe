@@ -6,9 +6,10 @@ Created on Wed Jun 29 15:33:08 2016
 """
 
 import caffe
+import os
 import numpy as np
 import yaml
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
 
 class MyCustomLayer(caffe.Layer):
@@ -19,6 +20,7 @@ class MyCustomLayer(caffe.Layer):
         self.batch_size = bottom[0].data.shape[0]
         self.input_size = bottom[0].data.shape[-1]
         self.sigma = yaml.load(self.param_str)["sigma"]
+        self.debug_mode = yaml.load(self.param_str)["debug_mode"]
         
         # check input dimension
         if (len(bottom) != 1):
@@ -56,36 +58,42 @@ class MyCustomLayer(caffe.Layer):
         for i in range(self.num_joints - 1):
             heatMaps[i,:,:] = self.generateGaussian(pos, points[i,:], Sigma)
         # generating last heat maps which contains all joint positions
-        joints_heatmaps = heatMaps[:,:,0:heatMaps.shape[2]-1]
-        # TODO check that it's correct
-        heatMaps[:,:,-1] = joints_heatmaps.max(axis=2)
+        heatMaps[-1,:,:] =  heatMaps[0:heatMaps.shape[0]-1,:,:].max(axis=0)
         return heatMaps
     
     def manifoldDataConversion(self, points):
+        # TODO: get mean and convariance matrix for each joint and use at the next step
         # TODO: from the 2D points project the new 3D points
         return points
     
     def forward(self, bottom, top):
-        heatMaps = bottom[0].data[...]
+        input_heatMaps = bottom[0].data[...]
+        heatMaps = np.zeros((self.batch_size, self.num_joints, self.input_size, self.input_size))
         
         for b in range(self.batch_size):
             points = np.zeros((self.num_joints,2))
             # the last one is the overall heat-map
             for j in range(self.num_joints - 1):
-                points[j,:] = self.findCoordinate(heatMaps[b,j,:,:])
+                points[j,:] = self.findCoordinate(input_heatMaps[b,j,:,:])
             
             # get new points
             points = self.manifoldDataConversion(points)
-            
-            # TODO: generate the overall heatmap
             heatMaps[b,:,:,:] = self.generateHeatMaps(points)
-            #new = self.generateHeatMaps(points)
-#            for j in range(self.num_joints - 1):
-#                name1 = '/home/denitome/before_%d.png' % j
-#                name2 = '/home/denitome/after_%d.png' % j
-#                plt.imsave(name1,heatMaps[b,j,:,:])
-#                plt.imsave(name2,new[j,:,:])
-                
-        top[0].data[...] = heatMaps
+            
+            if (self.debug_mode):
+                for j in range(self.num_joints):
+                    name1 = '%s/batch_%d_before_%d.png' % (os.environ['HOME'], b, j)
+                    name2 = '%s/batch_%d_after_%d.png' % (os.environ['HOME'], b, j)
+                    plt.imsave(name1,input_heatMaps[b,j,:,:])
+                    plt.imsave(name2,heatMaps[b,j,:,:])
+        
+        # TODO: change it to heatMaps
+        top[0].data[...] = input_heatMaps
+    
+    def backward(self, top, propagate_down, bottom):
+        # no operation is required since this layer is used to increase the
+        # amount of information in the following stage's input layer
+        #bottom[0].diff[...] = top[0].diff
+        pass
         
         
