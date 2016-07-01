@@ -287,7 +287,6 @@ layer {
   type: "Python"
   bottom: "conv7_stage1_new"
   top: "manifolds_stage1"
-  loss_weight: 1
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
@@ -632,7 +631,6 @@ layer {
   type: "Python"
   bottom: "Mconv5_stage2_new"
   top: "manifolds_stage2"
-  loss_weight: 1
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
@@ -838,24 +836,6 @@ layer {
   }
 }
 layer {
-  name: "Mrelu5_stage3"
-  type: "ReLU"
-  bottom: "Mconv5_stage3_new"
-  top: "Mconv5_stage3_new"
-}
-layer {
-  name: "manifolds_stage3"
-  type: "Python"
-  bottom: "Mconv5_stage3_new"
-  top: "manifolds_stage3"
-  loss_weight: 1
-  python_param {
-    module: "newheatmaps"
-    layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0}"
-  }
-}
-layer {
   name: "conv1_stage4"
   type: "Convolution"
   bottom: "pool3_stage2"
@@ -892,7 +872,7 @@ layer {
   type: "Concat"
   bottom: "conv1_stage4"
   bottom: "Mconv5_stage3_new"
-  bottom: "manifolds_stage3"
+  bottom: "manifolds_stage2"
   bottom: "pool_center_lower"
   top: "concat_stage4"
   concat_param {
@@ -1054,24 +1034,6 @@ layer {
   }
 }
 layer {
-  name: "Mrelu5_stage4"
-  type: "ReLU"
-  bottom: "Mconv5_stage4_new"
-  top: "Mconv5_stage4_new"
-}
-layer {
-  name: "manifolds_stage4"
-  type: "Python"
-  bottom: "Mconv5_stage4_new"
-  top: "manifolds_stage4"
-  loss_weight: 1
-  python_param {
-    module: "newheatmaps"
-    layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0}"
-  }
-}
-layer {
   name: "conv1_stage5"
   type: "Convolution"
   bottom: "pool3_stage2"
@@ -1108,7 +1070,7 @@ layer {
   type: "Concat"
   bottom: "conv1_stage5"
   bottom: "Mconv5_stage4_new"
-  bottom: "manifolds_stage4"
+  bottom: "manifolds_stage2"
   bottom: "pool_center_lower"
   top: "concat_stage5"
   concat_param {
@@ -1270,24 +1232,6 @@ layer {
   }
 }
 layer {
-  name: "Mrelu5_stage5"
-  type: "ReLU"
-  bottom: "Mconv5_stage5_new"
-  top: "Mconv5_stage5_new"
-}
-layer {
-  name: "manifolds_stage5"
-  type: "Python"
-  bottom: "Mconv5_stage5_new"
-  top: "manifolds_stage5"
-  loss_weight: 1
-  python_param {
-    module: "newheatmaps"
-    layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0}"
-  }
-}
-layer {
   name: "conv1_stage6"
   type: "Convolution"
   bottom: "pool3_stage2"
@@ -1324,7 +1268,7 @@ layer {
   type: "Concat"
   bottom: "conv1_stage6"
   bottom: "Mconv5_stage5_new"
-  bottom: "manifolds_stage5"
+  bottom: "manifolds_stage2"
   bottom: "pool_center_lower"
   top: "concat_stage6"
   concat_param {

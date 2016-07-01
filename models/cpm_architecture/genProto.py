@@ -112,6 +112,7 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
                 drop_counter += 1
         elif layername[l] == '@':
             n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.tops[last_manifold], n.pool_center_lower, concat_param=dict(axis=1))
+            #n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.pool_center_lower, concat_param=dict(axis=1))
             conv_counter = 1
             state = 'fuse'
             last_layer = 'concat_stage%d' % stage
@@ -227,16 +228,16 @@ if __name__ == "__main__":
         stride +=    [ 1 ,  2 ] * nCP + [ 0 ] + [ 1 ] + [ 0 ] + [ 1 ] * 5            + [ 0 ] + [ 0 ]
 
         for s in range(3, stage+1):
-            if (s != stage):
-                layername += ['$'] + ['C'] + ['@'] + ['C'] * 5            + ['M'] + ['L']
-                outCH +=     [ 0 ] + [32 ] + [ 0 ] + [128,128,128,128,18] + [ 0 ] + [ 0 ]
-                kernel +=    [ 0 ] + [ 5 ] + [ 0 ] + [11, 11, 11,  1, 1 ] + [ 0 ] + [ 0 ]
-                stride +=    [ 0 ] + [ 1 ] + [ 0 ] + [ 1 ] * 5            + [ 0 ] + [ 0 ]
-            else:
-                layername += ['$'] + ['C'] + ['@'] + ['C'] * 5            + ['L']
-                outCH +=     [ 0 ] + [32 ] + [ 0 ] + [128,128,128,128,18] + [ 0 ]
-                kernel +=    [ 0 ] + [ 5 ] + [ 0 ] + [11, 11, 11,  1, 1 ] + [ 0 ]
-                stride +=    [ 0 ] + [ 1 ] + [ 0 ] + [ 1 ] * 5            + [ 0 ]
+#            if (s != stage):
+#                layername += ['$'] + ['C'] + ['@'] + ['C'] * 5            + ['M'] + ['L']
+#                outCH +=     [ 0 ] + [32 ] + [ 0 ] + [128,128,128,128,18] + [ 0 ] + [ 0 ]
+#                kernel +=    [ 0 ] + [ 5 ] + [ 0 ] + [11, 11, 11,  1, 1 ] + [ 0 ] + [ 0 ]
+#                stride +=    [ 0 ] + [ 1 ] + [ 0 ] + [ 1 ] * 5            + [ 0 ] + [ 0 ]
+#            else:
+            layername += ['$'] + ['C'] + ['@'] + ['C'] * 5            + ['L']
+            outCH +=     [ 0 ] + [32 ] + [ 0 ] + [128,128,128,128,18] + [ 0 ]
+            kernel +=    [ 0 ] + [ 5 ] + [ 0 ] + [11, 11, 11,  1, 1 ] + [ 0 ]
+            stride +=    [ 0 ] + [ 1 ] + [ 0 ] + [ 1 ] * 5            + [ 0 ]
 
     label_name = ['label_1st_lower', 'label_lower']
     writePrototxts(dataFolder, directory, batch_size, stepsize, layername, kernel, stride, outCH, transform_param, base_lr, d_caffemodel, label_name, test_iter, test_interval, maxiter)
