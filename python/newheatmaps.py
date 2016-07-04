@@ -69,33 +69,31 @@ class MyCustomLayer(caffe.Layer):
     
     def forward(self, bottom, top):
         input_heatMaps = bottom[0].data[...]
-#        heatMaps = np.zeros((self.batch_size, self.num_joints, self.input_size, self.input_size))
+        heatMaps = np.zeros((self.batch_size, self.num_joints, self.input_size, self.input_size))
         
-#        for b in range(self.batch_size):
-#            points = np.zeros((self.num_joints,2))
-#            # the last one is the overall heat-map
-#            for j in range(self.num_joints - 1):
-#                points[j,:] = self.findCoordinate(input_heatMaps[b,j,:,:])
-#            
-#            # get new points
-#            points = self.manifoldDataConversion(points)
-#            heatMaps[b,:,:,:] = self.generateHeatMaps(points)
-#            
-#            if (self.debug_mode):
-#                for j in range(self.num_joints):
-#                    name1 = '%s/batch_%d_before_%d.png' % (os.environ['HOME'], b, j)
-#                    name2 = '%s/batch_%d_after_%d.png' % (os.environ['HOME'], b, j)
-#                    plt.imsave(name1,input_heatMaps[b,j,:,:])
-#                    plt.imsave(name2,heatMaps[b,j,:,:])
+        for b in range(self.batch_size):
+            points = np.zeros((self.num_joints,2))
+            # the last one is the overall heat-map
+            for j in range(self.num_joints - 1):
+                points[j,:] = self.findCoordinate(input_heatMaps[b,j,:,:])
+            
+            # get new points
+            points = self.manifoldDataConversion(points)
+            heatMaps[b,:,:,:] = self.generateHeatMaps(points)
+            
+            if (self.debug_mode):
+                for j in range(self.num_joints):
+                    name1 = '%s/batch_%d_before_%d.png' % (os.environ['HOME'], b, j)
+                    name2 = '%s/batch_%d_after_%d.png' % (os.environ['HOME'], b, j)
+                    plt.imsave(name1,input_heatMaps[b,j,:,:])
+                    plt.imsave(name2,heatMaps[b,j,:,:])
         
         # TODO: change it to heatMaps
         top[0].data[...] = input_heatMaps
+        #pass
     
     def backward(self, top, propagate_down, bottom):
-        # no operation is required since this layer is used to increase the
-        # amount of information in the following stage's input layer
-        #bottom[0].diff[...] = top[0].diff
-        #bottom[0].diff[...] = np.zeros(bottom[0].data.shape)
-        pass
+        bottom[0].diff[...] = np.zeros(bottom[0].data.shape)
+        #pass
         
         

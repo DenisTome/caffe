@@ -61,14 +61,14 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             if ((stage == 1 and conv_counter == 7) or
                 (stage > 1 and state != 'image' and (conv_counter in [1, 5]))):
                 conv_name = '%s_new' % conv_name
-                lr_m = 1e-3# 1 # changed -> using original model
-            else:
-                # Set learning rate multiplier to 0 for all layers but the new one
-                lr_m = 1e-3 # 1e-3 (best res so far)
+                #lr_m = 1e-3# 1 # changed -> using original model
+            #else:
+            lr_m = 5e-4 # 1e-3 (best res so far)
+            
             # additional for python layer
             if (stage > 1 and state != 'image' and (conv_counter == 1)):
-                conv_name = '%s_new_mf' % conv_name
-                lr_m = 1
+                conv_name = '%s_mf' % conv_name
+                lr_m = 2
             n.tops[conv_name] = L.Convolution(n.tops[last_layer], kernel_size=kernel[l],
                                                   num_output=outCH[l], pad=int(math.floor(kernel[l]/2)),
                                                   param=[dict(lr_mult=lr_m, decay_mult=1), dict(lr_mult=lr_m*2, decay_mult=0)],
@@ -112,6 +112,8 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
                 drop_counter += 1
         elif layername[l] == '@':
             n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.tops[last_manifold], n.pool_center_lower, concat_param=dict(axis=1))
+            #n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.tops[last_manifold], n.pool_center_lower, concat_param=dict(axis=1))
+                        
             #n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.pool_center_lower, concat_param=dict(axis=1))
             conv_counter = 1
             state = 'fuse'
@@ -138,7 +140,7 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
 
 
 
-def writePrototxts(dataFolder, dir, batch_size, stepsize, layername, kernel, stride, outCH, transform_param_in, base_lr, folder_name, label_name, test_iter, test_interval, maxiter):
+def writePrototxts(dataFolder, dir, batch_size, layername, kernel, stride, outCH, transform_param_in, folder_name, label_name, solver_param):
     # write the net prototxt files out
     with open('%s/pose_train_test.prototxt' % dir, 'w') as f:
         print 'writing %s/pose_train_test.prototxt' % dir
@@ -151,56 +153,58 @@ def writePrototxts(dataFolder, dir, batch_size, stepsize, layername, kernel, str
         f.write(str_to_write)
 
     with open('%s/pose_solver.prototxt' % dir, "w") as f:
-        solver_string = getSolverPrototxt(path_in_caffe, base_lr, folder_name, stepsize, dir, test_iter, test_interval, maxiter)
+        solver_string = getSolverPrototxt(path_in_caffe, folder_name, dir, solver_param)
         print 'writing %s/pose_solver.prototxt' % dir
         f.write('%s' % solver_string)
 
 
-def getSolverPrototxt(path_in_caffe, base_lr, folder_name, stepsize, dir, test_iter, test_interval, maxiter):
-    string = 'net: "%s/%s/pose_train_test.prototxt"\n\
-# The base learning rate, momentum and the weight decay of the network.\n\
-#test_iter: %d\n\
-#test_intervall: %d\n\
-base_lr: %f\n\
-momentum: 0.9\n\
-weight_decay: 0.0005\n\
-# The learning rate policy\n\
-lr_policy: "step"\n\
-#lr_policy: "fixed"\n\
-gamma: 0.333\n\
-#stepsize: %d\n\
-# Display every 100 iterations\n\
-display: 5\n\
-# The maximum number of iterations\n\
-max_iter: %d\n\
-# snapshot intermediate results\n\
-snapshot: 5000\n\
-snapshot_prefix: "%s/%s/pose"\n\
-# solver mode: CPU or GPU\n\
-solver_mode: GPU\n' % (path_in_caffe, dir, test_iter, test_interval, base_lr, stepsize, maxiter, path_in_caffe, folder_name)
+def getSolverPrototxt(path_in_caffe, folder_name, dir, solver_param):
+    maxiter = (int)(solver_param['train_size']/solver_param['batch_size']*solver_param['num_epochs'])
+    test_iter = (int)(solver_param['test_size']/solver_param['batch_size']*solver_param['num_epochs'])
+    
+    string = 'net: "%s/%s/pose_train_test.prototxt"\n' % (path_in_caffe, dir)
+    string += '#test_iter: %d\n#test_intervall: %d\n' % (test_iter, solver_param['test_interval'])
+    string += 'base_lr: %f\n' % solver_param['base_lr']
+    string += 'momentum: 0.9\n'
+    string += 'weight_decay: %f\n' % solver_param['weight_decay']
+    # The learning rate policy
+    if not solver_param['lr_policy_fixed']:
+        string += 'lr_policy: "step"\n'
+        string += 'stepsize: %d\n' % solver_param['stepsize']
+    else:
+        string += 'lr_policy: "fixed"\n'
+    string += 'gamma: 0.333\n'
+    # Display every n iterations
+    string += 'display: %d\n' % solver_param['disp_iter']
+    # The maximum number of iterations
+    string += 'max_iter: %d\n' % maxiter
+    # snapshot intermediate results
+    string += 'snapshot: %d\n' % solver_param['snapshot']
+    string += 'snapshot_prefix: "%s/%s/pose"\n' % (path_in_caffe, folder_name)
+    # solver mode: CPU or GPU
+    if solver_param['gpu']:
+        string += 'solver_mode: GPU\n'
+    else:
+        string += 'solver_mode: CPU\n'
     return string
 
 if __name__ == "__main__":
 
-    ### Change here for different dataset
+    ### SOLVER SETTINGS
     path_in_caffe = 'models/cpm_architecture'
     directory = 'prototxt'
     dataFolder = '%s/lmdb/train' % (path_in_caffe)
-    stepsize = 50000 # stepsize to decrease learning rate. This should depend on your dataset size
-    test_interval = 5000
     batch_size = 8
-    numEpochs = 12
-    trainSize = 115327
-    testSize = 40649
-    ###
-   
-    maxiter = (int)(trainSize/batch_size*numEpochs)
-    test_iter = (int)(testSize/batch_size*numEpochs)
-
-    d_caffemodel = '%s/caffemodel' % directory # the place you want to store your caffemodel
-    # should be higher due to random initialisation (8e-5)
     # base_lr = 1e-5 (8e-5)
     base_lr = 1e-4 #8e-5
+    solver_param = dict(stepsize=50000, batch_size=batch_size, num_epochs=12, base_lr = base_lr,
+                        train_size=115327, test_size=40649, test_interval=5000,
+                        weight_decay=0.0005, lr_policy_fixed=False, disp_iter=5,
+                        snapshot=5000, gpu=True)
+    ### END
+
+    d_caffemodel = '%s/caffemodel' % directory # the place you want to store your caffemodel
+
     # num_parts and np_in_lmdb are two parameters that are used inside the framework to move from one
     # dataset definition to another. Num_parts is the number of parts we want to have, while
     # np_in_lmdb is the number of joints saved in lmdb format using the dataset whole set of joints.
@@ -216,10 +220,10 @@ if __name__ == "__main__":
     if not os.path.exists(d_caffemodel):
         os.makedirs(d_caffemodel)
     
-    layername = ['C', 'P'] * nCP + ['C','C','D','C','D','C'] + ['M'] + ['L']# first-stage
-    kernel =    [ 9,  3 ] * nCP + [ 5 , 9 , 0 , 1 , 0 , 1 ] + [0] + [0] # first-stage
-    outCH =     [128, 128] * nCP + [ 32,512, 0 ,512, 0 ,18 ] + [0] + [0] # first-stage
-    stride =    [ 1 ,  2 ] * nCP + [ 1 , 1 , 0 , 1 , 0 , 1 ] + [0] + [0] # first-stage
+    layername = ['C', 'P'] * nCP + ['C','C','D','C','D','C'] + ['M'] + ['L'] # first-stage
+    kernel =    [ 9 ,  3 ] * nCP + [ 5 , 9 , 0 , 1 , 0 , 1 ] + [ 0 ] + [ 0 ] # first-stage
+    outCH =     [128, 128] * nCP + [ 32,512, 0 ,512, 0 ,18 ] + [ 0 ] + [ 0 ] # first-stage
+    stride =    [ 1 ,  2 ] * nCP + [ 1 , 1 , 0 , 1 , 0 , 1 ] + [ 0 ] + [ 0 ] # first-stage
 
     if stage >= 2:
         layername += ['C', 'P'] * nCP + ['$'] + ['C'] + ['@'] + ['C'] * 5            + ['M'] + ['L']
@@ -228,16 +232,16 @@ if __name__ == "__main__":
         stride +=    [ 1 ,  2 ] * nCP + [ 0 ] + [ 1 ] + [ 0 ] + [ 1 ] * 5            + [ 0 ] + [ 0 ]
 
         for s in range(3, stage+1):
-#            if (s != stage):
-#                layername += ['$'] + ['C'] + ['@'] + ['C'] * 5            + ['M'] + ['L']
-#                outCH +=     [ 0 ] + [32 ] + [ 0 ] + [128,128,128,128,18] + [ 0 ] + [ 0 ]
-#                kernel +=    [ 0 ] + [ 5 ] + [ 0 ] + [11, 11, 11,  1, 1 ] + [ 0 ] + [ 0 ]
-#                stride +=    [ 0 ] + [ 1 ] + [ 0 ] + [ 1 ] * 5            + [ 0 ] + [ 0 ]
-#            else:
-            layername += ['$'] + ['C'] + ['@'] + ['C'] * 5            + ['L']
-            outCH +=     [ 0 ] + [32 ] + [ 0 ] + [128,128,128,128,18] + [ 0 ]
-            kernel +=    [ 0 ] + [ 5 ] + [ 0 ] + [11, 11, 11,  1, 1 ] + [ 0 ]
-            stride +=    [ 0 ] + [ 1 ] + [ 0 ] + [ 1 ] * 5            + [ 0 ]
+            if (s != stage):
+                layername += ['$'] + ['C'] + ['@'] + ['C'] * 5            + ['M'] + ['L']
+                outCH +=     [ 0 ] + [32 ] + [ 0 ] + [128,128,128,128,18] + [ 0 ] + [ 0 ]
+                kernel +=    [ 0 ] + [ 5 ] + [ 0 ] + [11, 11, 11,  1, 1 ] + [ 0 ] + [ 0 ]
+                stride +=    [ 0 ] + [ 1 ] + [ 0 ] + [ 1 ] * 5            + [ 0 ] + [ 0 ]
+            else:
+                layername += ['$'] + ['C'] + ['@'] + ['C'] * 5            + ['L']
+                outCH +=     [ 0 ] + [32 ] + [ 0 ] + [128,128,128,128,18] + [ 0 ]
+                kernel +=    [ 0 ] + [ 5 ] + [ 0 ] + [11, 11, 11,  1, 1 ] + [ 0 ]
+                stride +=    [ 0 ] + [ 1 ] + [ 0 ] + [ 1 ] * 5            + [ 0 ]
 
     label_name = ['label_1st_lower', 'label_lower']
-    writePrototxts(dataFolder, directory, batch_size, stepsize, layername, kernel, stride, outCH, transform_param, base_lr, d_caffemodel, label_name, test_iter, test_interval, maxiter)
+    writePrototxts(dataFolder, directory, batch_size, layername, kernel, stride, outCH, transform_param, d_caffemodel, label_name, solver_param)

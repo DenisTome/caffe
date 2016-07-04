@@ -217,10 +217,10 @@ def plotData(train, val, nstages, main_title, avg_line = False, avg_batch_size =
     
 
 def main():
-    filename = ['prototxt/caffemodel/trial_5/log.txt']
+    #filename = ['prototxt/caffemodel/trial_5/log.txt']
     #filename = ['prototxt/caffemodel/trial_3/log.txt','prototxt/log.txt']
     #filename = ['prototxt/log1.txt','prototxt/log.txt']
-    #filename = ['prototxt/log.txt']
+    filename = ['prototxt/log.txt']
     #val_filename = ['prototxt/caffemodel/trial_5/validation.json']
     val_filename = []
     stn_lrm = 1
