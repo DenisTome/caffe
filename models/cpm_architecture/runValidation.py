@@ -21,6 +21,7 @@ inputSizeNN = 368
 outputSizeNN = 46
 joints_idx = [0,1,2,3,6,7,8,12,13,14,15,17,18,19,25,26,27]
 sigma = 7
+sigma_center = 21
 stride = 8
 verbose = False
 fn_notification = 25
@@ -101,6 +102,8 @@ def generateHeatMaps(center, joints):
     heatMaps[:,:,-1] = joints_heatmaps.max(axis=2)
     
     # heatmap to be added to the RGB image
+    sigma_sq = np.power(sigma_center,2)
+    Sigma = [[sigma_sq,0],[0,sigma_sq]]
     center_hm = np.zeros((inputSizeNN,inputSizeNN,1))
     center_hm[:,:,0] = generateGaussian(pos, center, Sigma)
     return heatMaps, center_hm
@@ -156,7 +159,7 @@ def runCaffeOnModel(data, model_dir, def_file, idx):
 #            visualiseImage(img, bbox, map(int, curr_data['objpos']), joints)
         
         # resize image and update joint positions
-        resizedImage = cv2.resize(img_croppad, (inputSizeNN,inputSizeNN))
+        resizedImage = cv2.resize(img_croppad, (inputSizeNN,inputSizeNN), interpolation = cv2.INTER_CUBIC)
         fx = float(inputSizeNN)/img_croppad.shape[1]
         fy = float(inputSizeNN)/img_croppad.shape[0]
         assert(fx != 0)
@@ -208,6 +211,8 @@ def runCaffeOnModel(data, model_dir, def_file, idx):
                 if (l == (len(layer_names)-1)):
                     x,y = findPoint(curr_heatMap)
                     err += np.sqrt(np.power(joints[j][0]-x,2)+np.power(joints[j][1]-y,2))
+                plt.imshow(curr_heatMap)
+                plt.waitforbuttonpress()
             loss_stage[l] += loss
         mpepj_model.append(float(err)/(num_channels-1))
     
@@ -267,7 +272,7 @@ def main():
     caffe.set_device(device_id)
     
     caffe_dir = os.environ.get('CAFFE_HOME_CPM')
-    json_file = '%s/models/cpm_architecture/jsonDatasets/H36M_annotations.json' % caffe_dir
+    json_file = '%s/models/cpm_architecture/jsonDatasets/H36M_annotations_test.json' % caffe_dir
     caffe_models_dir = '%s/models/cpm_architecture/prototxt/caffemodel/trial_5/' % caffe_dir
     output_file = '%svalidation.json' % caffe_models_dir
     
