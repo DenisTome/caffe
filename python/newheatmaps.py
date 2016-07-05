@@ -83,8 +83,8 @@ class MyCustomLayer(caffe.Layer):
             
             if (self.debug_mode):
                 for j in range(self.num_joints):
-                    name1 = '%s/batch_%d_before_%d.png' % (os.environ['HOME'], b, j)
-                    name2 = '%s/batch_%d_after_%d.png' % (os.environ['HOME'], b, j)
+                    name1 = '%s/tmp/batch_%d_before_%d.png' % (os.environ['HOME'], b, j)
+                    name2 = '%s/tmp/batch_%d_after_%d.png' % (os.environ['HOME'], b, j)
                     plt.imsave(name1,input_heatMaps[b,j,:,:])
                     plt.imsave(name2,heatMaps[b,j,:,:])
         

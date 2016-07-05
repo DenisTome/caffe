@@ -226,7 +226,7 @@ def main():
     stn_lrm = 1
     nstages = 6
     merge = [50000, 0]
-    finetune_iter = 5000
+    finetune_iter = 50000
     #merge = [0]
     train, val, base_lr, stepsize = parse_log(filename[0], val_filename)
     print 'Num iterations file = %d' % (train['iteration'][-1])
@@ -235,8 +235,8 @@ def main():
             curr_tr, curr_ts, base_lr_, stepsize_ = parse_log(filename[i], val_filename[i])
             print 'Num iterations file = %d' % (curr_tr['iteration'][-1])
             train, val = combine_data(train, val, curr_tr, curr_ts, merge[i-1])
-    main_title = 'Training with:\nbase_lr = %f; stepsize = %d; lr_mul = %d\nFinetuning: trial_2; Iter = %d ' % (base_lr, stepsize, stn_lrm, finetune_iter)
-    plotData(train, val, nstages, main_title, avg_line = True, avg_batch_size = 500)
+    main_title = 'Training with:\nbase_lr = %f; stepsize = %d; lr_mul = %d\nFinetuning: trial_5; Iter = %d ' % (base_lr, stepsize, stn_lrm, finetune_iter)
+    plotData(train, val, nstages, main_title, avg_line = True, avg_batch_size = 50)
     
     mergeLogFiles(filename,'prototxt/overall.txt', merge)
 

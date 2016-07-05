@@ -63,12 +63,12 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
                 conv_name = '%s_new' % conv_name
                 #lr_m = 1e-3# 1 # changed -> using original model
             #else:
-            lr_m = 5e-4 # 1e-3 (best res so far)
+            lr_m = 1e-4 # 1e-3 (best res so far)
             
             # additional for python layer
             if (stage > 1 and state != 'image' and (conv_counter == 1)):
                 conv_name = '%s_mf' % conv_name
-                lr_m = 2
+                lr_m = 1
             n.tops[conv_name] = L.Convolution(n.tops[last_layer], kernel_size=kernel[l],
                                                   num_output=outCH[l], pad=int(math.floor(kernel[l]/2)),
                                                   param=[dict(lr_mult=lr_m, decay_mult=1), dict(lr_mult=lr_m*2, decay_mult=0)],
@@ -90,7 +90,13 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             pool_counter += 1
         elif layername[l] == 'M':
             last_manifold = 'manifolds_stage%d' % stage
-            n.tops[last_manifold] = L.Python(n.tops[last_layer],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str='{"njoints": 17,"sigma": 1, "debug_mode": 0}'))#,loss_weight=1)
+#            n.tops[last_manifold] = L.Python(n.tops[last_layer],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str='{"njoints": 17,"sigma": 1, "debug_mode": 0}'))#,loss_weight=1)
+            # TODO: remove this (just for test)            
+            if deploy == False:            
+                n.tops[last_manifold] = L.Python(n.tops['label_lower'],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str='{"njoints": 17,"sigma": 1, "debug_mode": 0}'))#,loss_weight=1)
+            else:
+                last_manifold = last_layer
+            # till here
         elif layername[l] == 'L':
             # Loss: n.loss layer is only in training and testing nets, but not in deploy net.
             if deploy == False:
@@ -195,12 +201,13 @@ if __name__ == "__main__":
     directory = 'prototxt'
     dataFolder = '%s/lmdb/train' % (path_in_caffe)
     batch_size = 8
+    snapshot=100 #5000
     # base_lr = 1e-5 (8e-5)
     base_lr = 1e-4 #8e-5
     solver_param = dict(stepsize=50000, batch_size=batch_size, num_epochs=12, base_lr = base_lr,
                         train_size=115327, test_size=40649, test_interval=5000,
                         weight_decay=0.0005, lr_policy_fixed=False, disp_iter=5,
-                        snapshot=5000, gpu=True)
+                        snapshot=snapshot, gpu=True)
     ### END
 
     d_caffemodel = '%s/caffemodel' % directory # the place you want to store your caffemodel
