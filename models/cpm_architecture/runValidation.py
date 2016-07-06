@@ -189,7 +189,6 @@ def runCaffeOnModel(data, model_dir, def_file, idx):
         img4ch = np.concatenate((resizedImage, center), axis=2)
         img4ch = np.transpose(img4ch, (2, 0, 1))
         
-        #net.blobs['data'].reshape(*img4ch.shape)
         net.blobs['data'].data[...] = img4ch
         net.forward()
     
@@ -272,7 +271,7 @@ def main():
     caffe.set_device(device_id)
     
     caffe_dir = os.environ.get('CAFFE_HOME_CPM')
-    json_file = '%s/models/cpm_architecture/jsonDatasets/H36M_annotations_test.json' % caffe_dir
+    json_file = '%s/models/cpm_architecture/jsonDatasets/H36M_annotations.json' % caffe_dir
     caffe_models_dir = '%s/models/cpm_architecture/prototxt/caffemodel/trial_5/' % caffe_dir
     output_file = '%svalidation_tmp.json' % caffe_models_dir
     

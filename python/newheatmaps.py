@@ -21,6 +21,8 @@ class MyCustomLayer(caffe.Layer):
         self.input_size = bottom[0].data.shape[-1]
         self.sigma = yaml.load(self.param_str)["sigma"]
         self.debug_mode = yaml.load(self.param_str)["debug_mode"]
+        self.max_area = yaml.load(self.param_str)["max_area"]
+        self.percentage_max = yaml.load(self.param_str)["percentage_max"]*0.01
         
         # check input dimension
         if (len(bottom) != 1):
@@ -62,9 +64,50 @@ class MyCustomLayer(caffe.Layer):
         heatMaps[-1,:,:] =  heatMaps[0:heatMaps.shape[0]-1,:,:].max(axis=0)
         return heatMaps
     
-    def manifoldDataConversion(self, points):
-        # TODO: get mean and convariance matrix for each joint and use at the next step
+    def findMeanCovariance(self, heatMap):
+        mean_value = self.findCoordinate(heatMap)
+        
+        idx = np.where(heatMap >= heatMap.max()* self.percentage_max)
+        area = [np.min(idx[1]),np.min(idx[0]),np.max(idx[1]),np.max(idx[0])]
+        if (np.max(np.abs([area[0]-mean_value[0],area[1]-mean_value[1],
+                           area[2]-mean_value[0],area[3]-mean_value[1]])) > self.max_area):
+            left = mean_value[0] - self.max_area
+            if (left < 0):
+                left = 0
+            top = mean_value[1] - self.max_area
+            if (top < 0):
+                top = 0
+            right = mean_value[0] + self.max_area
+            if (right > heatMap.shape[0]):
+                right = heatMap.shape[0]
+            bottom = mean_value[1] + self.max_area    
+            if (bottom > heatMap.shape[1]):
+                bottom = heatMap.shape[1]
+            area = np.abs([left , top, right,bottom])
+        
+        heatmap_area = heatMap[area[1]:area[3],area[0]:area[2]]
+        heatmap_area = np.divide(heatmap_area,np.sum(heatmap_area))
+        
+        # extract covariance matrix
+        flatten_hm = heatmap_area.flatten()
+        x_coord = np.subtract(np.tile(range(area[0],area[2]), area[3]-area[1]),mean_value[0])
+        y_coord = np.subtract(np.repeat(range(area[1],area[3]), area[2]-area[0]),mean_value[1])
+        M = np.vstack((x_coord,y_coord))
+    
+        cov_matrix = np.dot(M,np.transpose(np.multiply(M,flatten_hm)))
+        return mean_value, cov_matrix.flatten()
+        
+    
+    def manifoldDataConversion(self, heatMaps):
         # TODO: from the 2D points project the new 3D points
+        points = np.zeros((self.num_joints,2))
+        mean_values = np.zeros((self.num_joints,2))
+        covariance_matrices = np.zeros((self.num_joints,4))
+        # the last one is the overall heat-map
+        for j in range(self.num_joints - 1):
+            mean_values[j,:],covariance_matrices[j,:] = self.findMeanCovariance(heatMaps[j,:,:])
+        # Points contains the new projected points
+        points = mean_values        
         return points
     
     def forward(self, bottom, top):
@@ -72,13 +115,8 @@ class MyCustomLayer(caffe.Layer):
         heatMaps = np.zeros((self.batch_size, self.num_joints, self.input_size, self.input_size))
         
         for b in range(self.batch_size):
-            points = np.zeros((self.num_joints,2))
-            # the last one is the overall heat-map
-            for j in range(self.num_joints - 1):
-                points[j,:] = self.findCoordinate(input_heatMaps[b,j,:,:])
-            
             # get new points
-            points = self.manifoldDataConversion(points)
+            points = self.manifoldDataConversion(input_heatMaps[b,:,:,:])
             heatMaps[b,:,:,:] = self.generateHeatMaps(points)
             
             if (self.debug_mode):

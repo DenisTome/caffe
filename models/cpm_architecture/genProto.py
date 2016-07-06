@@ -90,12 +90,12 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             pool_counter += 1
         elif layername[l] == 'M':
             last_manifold = 'manifolds_stage%d' % stage
-#            n.tops[last_manifold] = L.Python(n.tops[last_layer],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str='{"njoints": 17,"sigma": 1, "debug_mode": 0}'))#,loss_weight=1)
+            n.tops[last_manifold] = L.Python(n.tops[last_layer],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str='{"njoints": 17,"sigma": 1, "debug_mode": 0, "max_area": 100, "percentage_max": 3}'))#,loss_weight=1)
             # TODO: remove this (just for test)            
-            if deploy == False:            
-                n.tops[last_manifold] = L.Python(n.tops['label_lower'],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str='{"njoints": 17,"sigma": 1, "debug_mode": 0}'))#,loss_weight=1)
-            else:
-                last_manifold = last_layer
+#            if deploy == False:            
+#                n.tops[last_manifold] = L.Python(n.tops['label_lower'],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str='{"njoints": 17,"sigma": 1, "debug_mode": 0}'))#,loss_weight=1)
+#            else:
+#                last_manifold = last_layer
             # till here
         elif layername[l] == 'L':
             # Loss: n.loss layer is only in training and testing nets, but not in deploy net.
