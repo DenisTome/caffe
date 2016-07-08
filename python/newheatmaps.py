@@ -10,6 +10,8 @@ import os
 import numpy as np
 import yaml
 import matplotlib.pyplot as plt
+# TODO: remove
+import cv2
 from scipy.stats import multivariate_normal
 
 class MyCustomLayer(caffe.Layer):
@@ -34,9 +36,8 @@ class MyCustomLayer(caffe.Layer):
     
     def reshape(self, bottom, top):
         # Adjust the shapes of top blobs and internal buffers to accommodate the shapes of the bottom blobs.
-        # BGottom has the same shape of input
+        # Bottom has the same shape of input
         top[0].reshape(*bottom[0].data.shape)
-        #pass
     
     def findCoordinate(self, heatMap):
         idx = np.where(heatMap == heatMap.max())
@@ -86,6 +87,9 @@ class MyCustomLayer(caffe.Layer):
             area = np.abs([left , top, right,bottom])
         
         heatmap_area = heatMap[area[1]:area[3],area[0]:area[2]]
+        # TODO: check why warning
+        # TODO: if max is zero then mean value is in the center and 
+        #       the covariance matrix is covering th whole heat map
         heatmap_area = np.divide(heatmap_area,np.sum(heatmap_area))
         
         # extract covariance matrix
@@ -121,10 +125,18 @@ class MyCustomLayer(caffe.Layer):
             
             if (self.debug_mode):
                 for j in range(self.num_joints):
-                    name1 = '%s/tmp/batch_%d_before_%d.png' % (os.environ['HOME'], b, j)
-                    name2 = '%s/tmp/batch_%d_after_%d.png' % (os.environ['HOME'], b, j)
-                    plt.imsave(name1,input_heatMaps[b,j,:,:])
-                    plt.imsave(name2,heatMaps[b,j,:,:])
+                    name = '%s/tmp/batch_%d_beforeafter_%d.png' % (os.environ['HOME'], b, j)
+                    print '%d_%d - max value before is %f' % (b,j,np.max(input_heatMaps[b,j,:,:]))
+                    if (np.max(input_heatMaps[b,j,:,:]) > 0):
+                        rescaled_input = np.divide(input_heatMaps[b,j,:,:],np.max(input_heatMaps[b,j,:,:]))
+                        print '%d_%d - max value after is %f' % (b,j,np.max(rescaled_input))
+                    else:
+                        rescaled_input = input_heatMaps[b,j,:,:]
+                    vis = np.concatenate((rescaled_input, heatMaps[b,j,:,:]), axis=1)
+                    plt.imsave(name,vis)
+                    if (np.max(input_heatMaps[b,j,:,:]) == 0):
+                        name = '%s/tmp/exception_zero_%d_%d.png' % (os.environ['HOME'], b, j)
+                        plt.imsave(name,input_heatMaps[b,j,:,:])
         
         # TODO: change it to heatMaps
         top[0].data[...] = input_heatMaps

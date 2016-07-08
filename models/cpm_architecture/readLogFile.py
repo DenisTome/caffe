@@ -238,7 +238,8 @@ def main():
     main_title = 'Training with:\nbase_lr = %f; stepsize = %d; lr_mul = %d\nFinetuning: trial_5; Iter = %d ' % (base_lr, stepsize, stn_lrm, finetune_iter)
     plotData(train, val, nstages, main_title, avg_line = True, avg_batch_size = 50)
     
-    mergeLogFiles(filename,'prototxt/overall.txt', merge)
+    if (len(filename) > 1):
+        mergeLogFiles(filename,'prototxt/overall.txt', merge)
 
 if __name__ == '__main__':
     main()

@@ -336,12 +336,12 @@ layer {
 layer {
   name: "manifolds_stage1"
   type: "Python"
-  bottom: "label_lower"
+  bottom: "conv7_stage1_new"
   top: "manifolds_stage1"
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0}"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 1, \"max_area\": 100, \"percentage_max\": 3}"
   }
 }
 layer {
@@ -687,12 +687,12 @@ layer {
 layer {
   name: "manifolds_stage2"
   type: "Python"
-  bottom: "label_lower"
+  bottom: "Mconv5_stage2_new"
   top: "manifolds_stage2"
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0}"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 1, \"max_area\": 100, \"percentage_max\": 3}"
   }
 }
 layer {
@@ -909,12 +909,12 @@ layer {
 layer {
   name: "manifolds_stage3"
   type: "Python"
-  bottom: "label_lower"
+  bottom: "Mconv5_stage3_new"
   top: "manifolds_stage3"
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0}"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 1, \"max_area\": 100, \"percentage_max\": 3}"
   }
 }
 layer {
@@ -1131,12 +1131,12 @@ layer {
 layer {
   name: "manifolds_stage4"
   type: "Python"
-  bottom: "label_lower"
+  bottom: "Mconv5_stage4_new"
   top: "manifolds_stage4"
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0}"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 1, \"max_area\": 100, \"percentage_max\": 3}"
   }
 }
 layer {
@@ -1353,12 +1353,12 @@ layer {
 layer {
   name: "manifolds_stage5"
   type: "Python"
-  bottom: "label_lower"
+  bottom: "Mconv5_stage5_new"
   top: "manifolds_stage5"
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0}"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 1, \"max_area\": 100, \"percentage_max\": 3}"
   }
 }
 layer {
