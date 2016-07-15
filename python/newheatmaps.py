@@ -11,7 +11,7 @@ import numpy as np
 import yaml
 import matplotlib.pyplot as plt
 # TODO: remove
-import cv2
+import cv2  
 from scipy.stats import multivariate_normal
 
 class MyCustomLayer(caffe.Layer):
@@ -43,6 +43,9 @@ class MyCustomLayer(caffe.Layer):
         idx = np.where(heatMap == heatMap.max())
         x = idx[1][0]
         y = idx[0][0]
+        if (heatMap[y,x]==0):
+            x = int(heatMap.shape[1]/2)
+            y = int(heatMap.shape[0]/2)
         return x,y
     
     def generateGaussian(self, pos, mean, Sigma):
@@ -67,6 +70,11 @@ class MyCustomLayer(caffe.Layer):
     
     def findMeanCovariance(self, heatMap):
         mean_value = self.findCoordinate(heatMap)
+        # at the beginning there might be heatmaps with all zero values
+        if (heatMap[mean_value[1],mean_value[0]] == 0):
+            sigma_sq = heatMap.shape[0]*heatMap.shape[0]
+            M = np.array([[sigma_sq, 0], [0, sigma_sq]])
+            return mean_value, M.flatten()
         
         idx = np.where(heatMap >= heatMap.max()* self.percentage_max)
         area = [np.min(idx[1]),np.min(idx[0]),np.max(idx[1]),np.max(idx[0])]
@@ -86,11 +94,12 @@ class MyCustomLayer(caffe.Layer):
                 bottom = heatMap.shape[1]
             area = np.abs([left , top, right,bottom])
         
+        # it does not matter that we are considering a small portion of the 
+        # heatmap (we are just estimating the covariance matrix which is independent
+        # on the mean value)==0 I would expect the mean values to be in (0,0) 
         heatmap_area = heatMap[area[1]:area[3],area[0]:area[2]]
-        # TODO: check why warning
-        # TODO: if max is zero then mean value is in the center and 
-        #       the covariance matrix is covering th whole heat map
         heatmap_area = np.divide(heatmap_area,np.sum(heatmap_area))
+#        heatmap_area = np.divide(heatmap_area,np.nansum(heatmap_area))
         
         # extract covariance matrix
         flatten_hm = heatmap_area.flatten()
@@ -126,17 +135,15 @@ class MyCustomLayer(caffe.Layer):
             if (self.debug_mode):
                 for j in range(self.num_joints):
                     name = '%s/tmp/batch_%d_beforeafter_%d.png' % (os.environ['HOME'], b, j)
-                    print '%d_%d - max value before is %f' % (b,j,np.max(input_heatMaps[b,j,:,:]))
                     if (np.max(input_heatMaps[b,j,:,:]) > 0):
                         rescaled_input = np.divide(input_heatMaps[b,j,:,:],np.max(input_heatMaps[b,j,:,:]))
-                        print '%d_%d - max value after is %f' % (b,j,np.max(rescaled_input))
                     else:
                         rescaled_input = input_heatMaps[b,j,:,:]
                     vis = np.concatenate((rescaled_input, heatMaps[b,j,:,:]), axis=1)
                     plt.imsave(name,vis)
                     if (np.max(input_heatMaps[b,j,:,:]) == 0):
                         name = '%s/tmp/exception_zero_%d_%d.png' % (os.environ['HOME'], b, j)
-                        plt.imsave(name,input_heatMaps[b,j,:,:])
+                        plt.imsave(name,vis)
         
         # TODO: change it to heatMaps
         top[0].data[...] = input_heatMaps
