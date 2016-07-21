@@ -306,7 +306,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 142 (last added: roi_pooling_param)
+// LayerParameter next available layer-specific ID: 143 (last added: manifold_param)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -393,6 +393,7 @@ message LayerParameter {
   optional WindowDataParameter window_data_param = 129;
   optional CPMDataParameter cpmdata_param = 140;
   optional ROIPoolingParameter roi_pooling_param = 141;
+  optional ManifoldParameter manifold_param = 142;	
 }
 
 // Message that stores parameters used to apply transformation
@@ -1112,6 +1113,14 @@ message CPMDataParameter {
   // Prefetch queue (Number of batches to prefetch to host memory, increase if
   // data access bandwidth varies).
   optional uint32 prefetch = 10 [default = 4];
+}
+
+message ManifoldParameter{
+  optional uint32 njoints = 1 [default = 17];
+  optional uint32 sigma = 2 [default = 1];
+  optional bool debug_mode = 3 [default = false];
+  optional uint32 max_area = 4 [default = 100];
+  optional uint32 percentage_max = 5 [default = 3];
 }
 
 
