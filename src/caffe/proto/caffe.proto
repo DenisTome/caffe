@@ -1117,7 +1117,7 @@ message CPMDataParameter {
 
 message ManifoldParameter{
   optional uint32 njoints = 1 [default = 17];
-  optional uint32 sigma = 2 [default = 1];
+  optional float sigma = 2 [default = 1];
   optional bool debug_mode = 3 [default = false];
   optional uint32 max_area = 4 [default = 100];
   optional uint32 percentage_max = 5 [default = 3];

@@ -697,6 +697,83 @@ class SPPLayer : public Layer<Dtype> {
   shared_ptr<ConcatLayer<Dtype> > concat_layer_;
 };
 
+/**
+ * @brief Manifold layer
+ *
+ * TODO(dox): thorough documentation for Forward, Backward, and proto params.
+ */
+template <typename Dtype>
+class ManifoldLayer : public Layer<Dtype> {
+ public:
+  explicit ManifoldLayer(const LayerParameter& param)
+      : Layer<Dtype>(param) {}
+  virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top);
+  virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top);
+
+  virtual inline const char* type() const { return "Manifold"; }
+  virtual inline int ExactNumBottomBlobs() const { return 1; }
+  virtual inline int MinTopBlobs() const { return 1; }
+  virtual inline int ExactNumTopBlobs() const { return 1; }
+
+ protected:
+  virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+      const vector<Blob<Dtype>*>& top);
+//  virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+//      const vector<Blob<Dtype>*>& top);
+  virtual void Backward_cpu(const vector<Blob<Dtype>*>& top,
+      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+//  virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
+//      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+
+ private:
+  void putGaussianMaps(Dtype* entry, Point2f center,
+		  int stride, int grid_x, int grid_y, float sigma);
+  void fitGaussian(const Dtype* data, Point2f &mean, Vec4f &cov);
+
+  int channels_;
+  int height_, width_;
+  int njoints_;
+  float sigma_;
+  bool debug_mode_;
+  int max_area_;
+  int percentage_max_;
+};
+
+//#ifdef USE_CUDNN
+///*
+// * @brief cuDNN implementation of PoolingLayer.
+// *        Fallback to PoolingLayer for CPU mode.
+//*/
+//template <typename Dtype>
+//class CuDNNManifoldLayer : public ManifoldLayer<Dtype> {
+// public:
+//  explicit CuDNNManifoldLayer(const LayerParameter& param)
+//      : ManifoldLayer<Dtype>(param), handles_setup_(false) {}
+//  virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+//      const vector<Blob<Dtype>*>& top);
+//  virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
+//      const vector<Blob<Dtype>*>& top);
+//  virtual ~CuDNNManifoldLayer();
+//  // Currently, cuDNN does not support the extra top blob.
+//  virtual inline int MinTopBlobs() const { return -1; }
+//  virtual inline int ExactNumTopBlobs() const { return 1; }
+//
+// protected:
+//  virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+//      const vector<Blob<Dtype>*>& top);
+//  virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
+//      const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
+//
+//  bool handles_setup_;
+//  cudnnHandle_t             handle_;
+//  cudnnManifoldDescriptor_t bottom_desc_, top_desc_;
+//  cudnnManifoldDescriptor_t  pooling_desc_;
+//  cudnnManifoldMode_t        mode_;
+//};
+//#endif
+
 }  // namespace caffe
 
 #endif  // CAFFE_VISION_LAYERS_HPP_

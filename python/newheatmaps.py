@@ -147,7 +147,7 @@ class MyCustomLayer(caffe.Layer):
         
         # TODO: change it to heatMaps
         top[0].data[...] = input_heatMaps
-        #pass
+            #pass
     
     def backward(self, top, propagate_down, bottom):
         bottom[0].diff[...] = np.zeros(bottom[0].data.shape)

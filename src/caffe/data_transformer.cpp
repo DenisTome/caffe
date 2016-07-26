@@ -557,7 +557,7 @@ template<typename Dtype> void DataTransformer<Dtype>::Transform_nv(const Datum& 
   // generate data for the 4th dimension (heat map for the center of the person)
   putGaussianMaps(transformed_data + 3*offset, meta.objpos, 1, img_aug.cols, img_aug.rows, param_.sigma_center());
   //LOG(INFO) << "image transformation done!";
-  generateLabelMap(transformed_label, img_aug, meta);
+  (transformed_label, img_aug, meta);
 
   //starts to visualize everything (transformed_data in 4 ch, label) fed into conv1
   //if(param_.visualize()){
