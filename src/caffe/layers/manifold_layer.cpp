@@ -96,23 +96,15 @@ void ManifoldLayer<Dtype>::fitGaussian(const Dtype* data, Point2f &mean, Vec4f &
 		  }
 	  }
 	}
-	Mat M;
+	Mat M(posX.size(),2,CV_32FC1);
 	hconcat(Mat(posX),Mat(posY),M);
-	Mat elem = Mat(elemsList) / sumVals;
-	Mat elem_r = repeat(elem,1,2);
+	Mat elem = repeat(Mat(elemsList) / sumVals,1,2);
 	Mat M_t;
 	transpose(M, M_t);
-	Mat p1;
-	caffe_mul(M.rows*M.cols, (float*)M.data, (float*)elem_r.data, (float*)p1.data);// M.mul(elem_r);
-//	Mat C = M_t *
-	LOG(INFO) << "M shape: (" << M.rows << "," << M.cols << ")";
-//	LOG(INFO) << "C shape: (" << C.rows << "," << C.cols << ")";
-//    for (int t=0;t<18;t++){
-//        cout << "M val (" << t << ",0):" << M.at<float>(t,1) << endl;
-//    }
-//    cout << "C is:["<<C.at<float>(0)<<","<<C.at<float>(1)<<","<<C.at<float>(2)<<","<<C.at<float>(3)<<"]"<<endl;
-//	memcpy(&(cov[0]), C.data, C.rows*C.cols*sizeof(float));
-	// TODO: substitute operations with caffe functions (like caffe_mul)
+	Mat p1(M.rows, M.cols, CV_32FC1);
+	caffe_mul(M.rows*M.cols, (float*)M.data, (float*)elem.data, (float*)p1.data);
+	Mat C = M_t * p1;
+	memcpy(&(cov[0]), C.data, C.rows*C.cols*sizeof(float));
 	// TODO: convert caffe operations in gpu (caffe_gpu_operation)
 }
 
@@ -127,18 +119,21 @@ void ManifoldLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   // Initialising all heat-maps to zero
   caffe_set(top_count, Dtype(0), top_data);
 
-//  int channelOffset = width_ * height_;
+  int channelOffset = width_ * height_;
+  int batch_offset = channelOffset * channels_;
   // scan batches
-//  for (int b = 0; b < bottom[0]->num(); b++){
-//	  // scan channels
-//	  int batch_offset = b * channelOffset * bottom[0]->num();
-//	  for (int hm = 0; hm < njoints_; hm++){
-//		  int curr_offset = batch_offset + hm * channelOffset;
-//	  }
-//  }
-  Point2f mean;
-  Vec4f cov;
-//  fitGaussian(bottom_data, mean, cov);
+  for (int b = 0; b < bottom[0]->num(); b++){
+	  // scan channels
+	  for (int hm = 0; hm < njoints_; hm++){
+		  int curr_offset = b * batch_offset + hm * channelOffset;
+		  Point2f mean;
+		  Vec4f cov;
+		  fitGaussian(bottom_data[curr_offset], mean, cov);
+	  }
+  }
+
+  LOG(INFO) << "mean: [" << mean.x << "," << mean.y << "]";
+  LOG(INFO) << "cov: [" << cov[0] << "," << cov[1] << "," << cov[2] << "," << cov[3] << "]";
 
 }
 
