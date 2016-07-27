@@ -140,8 +140,7 @@ void ManifoldLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 	// Scan batches
 	if (debug_mode_)
 		LOG(INFO) << "BATCH size is " << bottom[0]->num();
-	int b = 0;
-	//	for (int b = 0; b < bottom[0]->num(); b++){
+	for (int b = 0; b < bottom[0]->num(); b++){
 		// Scan channels
 		if (debug_mode_)
 			LOG(INFO) << "considering batch image " << b;
@@ -198,7 +197,7 @@ void ManifoldLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
 				imwrite(imagename, before_after_vis);
 			}
 		}
-//	}
+	}
 
 }
 
