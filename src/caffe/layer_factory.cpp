@@ -197,6 +197,8 @@ shared_ptr<Layer<Dtype> > GetTanHLayer(const LayerParameter& param) {
 
 REGISTER_LAYER_CREATOR(TanH, GetTanHLayer);
 
+REGISTER_LAYER_CLASS(Manifold);
+
 #ifdef WITH_PYTHON_LAYER
 template <typename Dtype>
 shared_ptr<Layer<Dtype> > GetPythonLayer(const LayerParameter& param) {
