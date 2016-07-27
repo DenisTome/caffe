@@ -146,7 +146,7 @@ class MyCustomLayer(caffe.Layer):
                         plt.imsave(name,vis)
         
         # TODO: change it to heatMaps
-        top[0].data[...] = input_heatMaps
+        top[0].data[...] = heatMaps #input_heatMaps
             #pass
     
     def backward(self, top, propagate_down, bottom):

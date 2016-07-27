@@ -731,6 +731,7 @@ class ManifoldLayer : public Layer<Dtype> {
   void putGaussianMaps(Dtype* entry, Point2f center,
 		  int stride, int grid_x, int grid_y, float sigma);
   void fitGaussian(const Dtype* data, Point2f &mean, Vec4f &cov);
+  void findNewJointPositions(Point2f* means, Vec4f* cov, Point2f* newPoints);
 
   int channels_;
   int height_, width_;

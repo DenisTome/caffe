@@ -70,8 +70,9 @@ void ManifoldLayer<Dtype>::fitGaussian(const Dtype* data, Point2f &mean, Vec4f &
 		  }
 	  }
 	}
-	if (max_y == -1){
+	if (maxVal <= 0.0){
 		// Input has zero value
+		// Return joint in the middle of the heat-map with maximum uncertainty
 		mean = Point2f((width_/2),(height_/2));
 		cov = Vec4f(width_*height_, 0, 0, width_*height_);
 		return;
@@ -97,6 +98,13 @@ void ManifoldLayer<Dtype>::fitGaussian(const Dtype* data, Point2f &mean, Vec4f &
 	  }
 	}
 	Mat M(posX.size(),2,CV_32FC1);
+	if (debug_mode_){
+		LOG(INFO) << "posX size " << posX.size();
+		LOG(INFO) << "posY size " << posY.size();
+		LOG(INFO) << "elem size " << elemsList.size();
+	}
+	CHECK(posX.size() == posY.size()) << "Number of elements in estimating the covariance matrix must be the same";
+	CHECK(posX.size() == elemsList.size()) << "Number of weights in estimating the covariance matrix must be the same";
 	hconcat(Mat(posX),Mat(posY),M);
 	Mat elem = repeat(Mat(elemsList) / sumVals,1,2);
 	Mat M_t;
@@ -108,32 +116,89 @@ void ManifoldLayer<Dtype>::fitGaussian(const Dtype* data, Point2f &mean, Vec4f &
 	// TODO: convert caffe operations in gpu (caffe_gpu_operation)
 }
 
+template <typename Dtype>
+void ManifoldLayer<Dtype>::findNewJointPositions(Point2f* means, Vec4f* cov, Point2f* newPoints){
+	// TODO: do actual manifold conversion
+	for (int j=0;j<njoints_;j++){
+		newPoints[j] = means[j];
+	}
+}
+
 // TODO: finish
 template <typename Dtype>
 void ManifoldLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
-  const Dtype* bottom_data = bottom[0]->cpu_data();
-  Dtype* top_data = top[0]->mutable_cpu_data();
-  const int top_count = top[0]->count();
+	const Dtype* bottom_data = bottom[0]->cpu_data();
+	Dtype* top_data = top[0]->mutable_cpu_data();
+	const int top_count = top[0]->count();
 
-  // Initialising all heat-maps to zero
-  caffe_set(top_count, Dtype(0), top_data);
+	// Initialising all heat-maps to zero
+	caffe_set(top_count, Dtype(0), top_data);
 
-  int channelOffset = width_ * height_;
-  int batch_offset = channelOffset * channels_;
-  // scan batches
-  for (int b = 0; b < bottom[0]->num(); b++){
-	  // scan channels
-	  for (int hm = 0; hm < njoints_; hm++){
-		  int curr_offset = b * batch_offset + hm * channelOffset;
-		  Point2f mean;
-		  Vec4f cov;
-		  fitGaussian(bottom_data[curr_offset], mean, cov);
-	  }
-  }
+	int channelOffset = width_ * height_;
+	int batch_offset = channelOffset * channels_;
+	// Scan batches
+	if (debug_mode_)
+		LOG(INFO) << "BATCH size is " << bottom[0]->num();
+	int b = 0;
+	//	for (int b = 0; b < bottom[0]->num(); b++){
+		// Scan channels
+		if (debug_mode_)
+			LOG(INFO) << "considering batch image " << b;
+		Point2f mean[njoints_];
+		Vec4f cov[njoints_];
+		for (int hm = 0; hm < njoints_; hm++){
+			int curr_offset = b * batch_offset + hm * channelOffset;
+			fitGaussian(bottom_data+curr_offset, mean[hm], cov[hm]);
+		}
 
-  LOG(INFO) << "mean: [" << mean.x << "," << mean.y << "]";
-  LOG(INFO) << "cov: [" << cov[0] << "," << cov[1] << "," << cov[2] << "," << cov[3] << "]";
+		if (debug_mode_)
+			LOG(INFO) << "manifold get new joints ";
+		// TODO
+	    // Extracted mean and convariance are input to the manifold layer where these data
+	    // are used to identify the new 2D joint coordinates.
+		Point2f newJointPos[njoints_];
+		findNewJointPositions(&mean[0], &cov[0], &newJointPos[0]);
+
+		if (debug_mode_)
+			LOG(INFO) << "generate new heat-maps";
+		// Generate heat-map with new joint positions
+		for (int hm = 0; hm < njoints_; hm++){
+			int curr_offset = b * batch_offset + hm * channelOffset;
+			putGaussianMaps(top_data+curr_offset, newJointPos[hm], 1, width_, height_, sigma_);
+		}
+
+		for (int g_y = 0; g_y < height_; g_y++){
+			for (int g_x = 0; g_x < width_; g_x++){
+				float maximum = 0;
+				for (int i = 0; i < njoints_; i++){
+					maximum = (maximum > top_data[b*batch_offset + i*channelOffset + g_y*width_ + g_x]) ? maximum : top_data[b*batch_offset + i*channelOffset + g_y*width_ + g_x];
+				}
+				top_data[b*batch_offset + njoints_*channelOffset + g_y*width_ + g_x] = max(1.0-maximum, 0.0);
+			}
+		}
+
+		if (debug_mode_){
+			for (int j = 0; j < channels_; j++){
+				int curr_offset = b * batch_offset + j * channelOffset;
+				char imagename [100];
+				sprintf(imagename, "manifold_batch_%02d_before_after_%02d.jpg", b, j);
+				int padding = 2;
+
+				Mat tmp_vis_in(height_,width_,CV_32FC1);
+				Mat tmp_vis_out(height_,width_,CV_32FC1);
+				Mat before_after = Mat::ones(height_+2*padding,2*width_+3*padding,CV_32FC1);
+				memcpy(tmp_vis_in.data,bottom_data+curr_offset, width_*height_*sizeof(float));
+				memcpy(tmp_vis_out.data,top_data+curr_offset, width_*height_*sizeof(float));
+
+				Mat before_after_vis;
+				tmp_vis_in.copyTo(before_after(Rect(padding,padding,height_,width_)));
+				tmp_vis_out.copyTo(before_after(Rect(width_+2*padding,padding,height_,width_)));
+				before_after.convertTo(before_after_vis, CV_8UC1, 255, 0);
+				imwrite(imagename, before_after_vis);
+			}
+		}
+//	}
 
 }
 

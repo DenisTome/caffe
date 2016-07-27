@@ -283,6 +283,19 @@ layer {
   top: "conv7_stage1_new"
 }
 layer {
+  name: "manifolds_stage1"
+  type: "Manifold"
+  bottom: "conv7_stage1_new"
+  top: "manifolds_stage1"
+  manifold_param {
+    njoints: 17
+    sigma: 1
+    debug_mode: false
+    max_area: 100
+    percentage_max: 3
+  }
+}
+layer {
   name: "conv1_stage2"
   type: "Convolution"
   bottom: "image"
@@ -448,7 +461,7 @@ layer {
   type: "Concat"
   bottom: "conv4_stage2"
   bottom: "conv7_stage1_new"
-  bottom: "conv7_stage1_new"
+  bottom: "manifolds_stage1"
   bottom: "pool_center_lower"
   top: "concat_stage2"
   concat_param {
@@ -616,6 +629,19 @@ layer {
   top: "Mconv5_stage2_new"
 }
 layer {
+  name: "manifolds_stage2"
+  type: "Manifold"
+  bottom: "Mconv5_stage2_new"
+  top: "manifolds_stage2"
+  manifold_param {
+    njoints: 17
+    sigma: 1
+    debug_mode: false
+    max_area: 100
+    percentage_max: 3
+  }
+}
+layer {
   name: "conv1_stage3"
   type: "Convolution"
   bottom: "pool3_stage2"
@@ -652,7 +678,7 @@ layer {
   type: "Concat"
   bottom: "conv1_stage3"
   bottom: "Mconv5_stage2_new"
-  bottom: "Mconv5_stage2_new"
+  bottom: "manifolds_stage2"
   bottom: "pool_center_lower"
   top: "concat_stage3"
   concat_param {
@@ -820,6 +846,19 @@ layer {
   top: "Mconv5_stage3_new"
 }
 layer {
+  name: "manifolds_stage3"
+  type: "Manifold"
+  bottom: "Mconv5_stage3_new"
+  top: "manifolds_stage3"
+  manifold_param {
+    njoints: 17
+    sigma: 1
+    debug_mode: false
+    max_area: 100
+    percentage_max: 3
+  }
+}
+layer {
   name: "conv1_stage4"
   type: "Convolution"
   bottom: "pool3_stage2"
@@ -856,7 +895,7 @@ layer {
   type: "Concat"
   bottom: "conv1_stage4"
   bottom: "Mconv5_stage3_new"
-  bottom: "Mconv5_stage3_new"
+  bottom: "manifolds_stage3"
   bottom: "pool_center_lower"
   top: "concat_stage4"
   concat_param {
@@ -1024,6 +1063,19 @@ layer {
   top: "Mconv5_stage4_new"
 }
 layer {
+  name: "manifolds_stage4"
+  type: "Manifold"
+  bottom: "Mconv5_stage4_new"
+  top: "manifolds_stage4"
+  manifold_param {
+    njoints: 17
+    sigma: 1
+    debug_mode: false
+    max_area: 100
+    percentage_max: 3
+  }
+}
+layer {
   name: "conv1_stage5"
   type: "Convolution"
   bottom: "pool3_stage2"
@@ -1060,7 +1112,7 @@ layer {
   type: "Concat"
   bottom: "conv1_stage5"
   bottom: "Mconv5_stage4_new"
-  bottom: "Mconv5_stage4_new"
+  bottom: "manifolds_stage4"
   bottom: "pool_center_lower"
   top: "concat_stage5"
   concat_param {
@@ -1228,6 +1280,19 @@ layer {
   top: "Mconv5_stage5_new"
 }
 layer {
+  name: "manifolds_stage5"
+  type: "Manifold"
+  bottom: "Mconv5_stage5_new"
+  top: "manifolds_stage5"
+  manifold_param {
+    njoints: 17
+    sigma: 1
+    debug_mode: false
+    max_area: 100
+    percentage_max: 3
+  }
+}
+layer {
   name: "conv1_stage6"
   type: "Convolution"
   bottom: "pool3_stage2"
@@ -1264,7 +1329,7 @@ layer {
   type: "Concat"
   bottom: "conv1_stage6"
   bottom: "Mconv5_stage5_new"
-  bottom: "Mconv5_stage5_new"
+  bottom: "manifolds_stage5"
   bottom: "pool_center_lower"
   top: "concat_stage6"
   concat_param {

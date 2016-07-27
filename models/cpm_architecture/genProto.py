@@ -89,12 +89,11 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             last_layer = 'pool%d_stage%d' % (pool_counter, stage)
             pool_counter += 1
         elif layername[l] == 'M':
-#            last_manifold = 'manifolds_stage%d' % stage
-            last_manifold = last_layer
-#            n.tops[last_manifold] = L.Python(n.tops[last_layer],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str='{"njoints": 17,"sigma": 1, "debug_mode": 0, "max_area": 100, "percentage_max": 25}'))#,loss_weight=1)
+            last_manifold = 'manifolds_stage%d' % stage
+            n.tops[last_manifold] = L.Manifold(n.tops[last_layer],manifold_param=dict(njoints=17,sigma=1,debug_mode=False,max_area=100,percentage_max=3))
             # TODO: remove this (just for test)            
-#            if deploy == False:            
-#                n.tops[last_manifold] = L.Python(n.tops['label_lower'],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str='{"njoints": 17,"sigma": 1, "debug_mode": 0}'))#,loss_weight=1)
+#            if (tmp_v == 1):            
+#                n.tops[last_manifold] = L.Manifold(n.tops[last_layer],manifold_param=dict(njoints=17,sigma=1,debug_mode=True,max_area=100,percentage_max=3))
 #            else:
 #                last_manifold = last_layer
             # till here
