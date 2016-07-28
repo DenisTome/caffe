@@ -1,10 +1,12 @@
 #!/bin/bash
 
+# FINETUNING FROM THE ORIGINAL CONVOLUTIONAL POSE MACHINE'S MODEL
 #GLOG_logtostderr=1 build/tools/caffe train \
 #-solver models/cpm_architecture/prototxt/pose_solver.prototxt \
 #-weights models/cpm_architecture/savedmodels/pose_iter_985000_addLEEDS.caffemodel \
 #-gpu 0 2>&1 | tee models/cpm_architecture/prototxt/log.txt
 
+# FINETUNING FROM THE BEST TRAINING SO FAR STARTING FROM ITERATION 50K (WHICH IS CLOSE TO THE BEST)
 #GLOG_logtostderr=1 build/tools/caffe train \
 #-solver models/cpm_architecture/prototxt/pose_solver.prototxt \
 #-weights models/cpm_architecture/prototxt/caffemodel/trial_5/pose_iter_50000.caffemodel \

@@ -91,6 +91,7 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
         elif layername[l] == 'M':
             last_manifold = 'manifolds_stage%d' % stage
             n.tops[last_manifold] = L.Manifold(n.tops[last_layer],manifold_param=dict(njoints=17,sigma=1,debug_mode=False,max_area=100,percentage_max=3))
+#           #last_manifold = last_layer
             # TODO: remove this (just for test)            
 #            if (tmp_v == 1):            
 #                n.tops[last_manifold] = L.Manifold(n.tops[last_layer],manifold_param=dict(njoints=17,sigma=1,debug_mode=True,max_area=100,percentage_max=3))
