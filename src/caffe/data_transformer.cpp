@@ -525,10 +525,10 @@ template<typename Dtype> void DataTransformer<Dtype>::Transform_nv(const Datum& 
   }
   else {
 	// do the same things with test images if they are not in the same format
-	if ((img.rows != kImageSize) || (img.cols != kImageSize))
-		augmentation_croppad(img, img_aug, meta);
-	else
-		img_aug = img.clone();
+//	if ((img.rows != kImageSize) || (img.cols != kImageSize))
+//		augmentation_croppad(img, img_aug, meta);
+//	else
+	img_aug = img.clone();
     as.scale = 1;
     as.crop = Size(); //This is 368x368
     as.flip = 0;
@@ -792,9 +792,10 @@ void DataTransformer<Dtype>::generateLabelMap(Dtype* transformed_label, Mat& img
   //LOG(INFO) << "grid_x " << grid_x << " grid_y " << grid_y;
 
   // clear out transformed_label, it may remain things for last batch
+  // 2*(np +1) + 1 because we have np joints, replicated on two outputs, plus the meta-data layer
   for (int g_y = 0; g_y < grid_y; g_y++){
     for (int g_x = 0; g_x < grid_x; g_x++){
-      for (int i = 0; i < 2*(np+1); i++){
+      for (int i = 0; i < 2*(np+1) + 1; i++){
         transformed_label[i*channelOffset + g_y*grid_x + g_x] = 0;
       }
     }
@@ -841,6 +842,13 @@ void DataTransformer<Dtype>::generateLabelMap(Dtype* transformed_label, Mat& img
     }
   }
   //LOG(INFO) << "background put";
+
+  // Add metadata in the last channel
+  // Be careful, because we wont to store here data in a uint8 "pixel" of the channel. The maximum representable value is 255
+  // If we want to put data here, we have to account for the maximum value we are going to use. We are using int (4 bytes).
+  metadata_offset = 2*(np + 1)*channelOffset;
+  transformed_label[metadata_offset] = int(meta.annolist_index);
+  //LOF(INFO) << "metadata put";
 
   //visualize
   if(1 && param_.visualize()){

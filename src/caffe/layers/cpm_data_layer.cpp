@@ -75,17 +75,19 @@ void CPMDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
       << top[0]->width();
 
   // label
+  // output_labels is defined in the BaseDataLayer as true if size of top is bigger than one
   if (this->output_labels_) {
     const int stride = this->layer_param_.transform_param().stride();
     const int height = this->layer_param_.transform_param().crop_size_y();
     const int width = this->layer_param_.transform_param().crop_size_x();
 
+    // increase size from 2*(num_parts+1) to 2*(num_parts+1) + 1 for adding meta-data
     int num_parts = this->layer_param_.transform_param().num_parts();
-    top[1]->Reshape(batch_size, 2*(num_parts+1), height/stride, width/stride);
+    top[1]->Reshape(batch_size, 2*(num_parts+1)+1, height/stride, width/stride);
     for (int i = 0; i < this->PREFETCH_COUNT; ++i) {
-      this->prefetch_[i].label_.Reshape(batch_size, 2*(num_parts+1), height/stride, width/stride);
+      this->prefetch_[i].label_.Reshape(batch_size, 2*(num_parts+1)+1, height/stride, width/stride);
     }
-    this->transformed_label_.Reshape(1, 2*(num_parts+1), height/stride, width/stride);
+    this->transformed_label_.Reshape(1, 2*(num_parts+1)+1, height/stride, width/stride);
   }
 }
 
