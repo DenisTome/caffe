@@ -5,6 +5,8 @@
 
 #include <vector>
 #include <string>
+#include <iostream>
+#include <fstream>
 
 #include "caffe/common.hpp"
 #include "caffe/data_layers.hpp"
@@ -89,6 +91,27 @@ void CPMDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
     }
     this->transformed_label_.Reshape(1, 2*(num_parts+1)+1, height/stride, width/stride);
   }
+
+  // Load mask file and generate mask arrays
+  string path_file = "models/cpm_architecture/masks";
+  uint32_t size_mask;
+  std::ifstream masks;
+  masks.open(path_file.c_str(), ios::binary);
+  if (!masks){
+	  LOG(ERROR) << "Mask file missing";
+  }
+
+  masks.read((char *)&size_mask, sizeof(uint32_t));
+  uint32_t *buff = new uint32_t[size_mask];
+  masks.read((char *)buff, size_mask*sizeof(uint32_t));
+  this->mask_camera_ = buff;
+  buff = new uint32_t[size_mask];
+  masks.read((char *)buff, size_mask*sizeof(uint32_t));
+  this->mask_action_ = buff;
+  buff = new uint32_t[size_mask];
+  masks.read((char *)buff, size_mask*sizeof(uint32_t));
+  this->mask_person_ = buff;
+  LOG(INFO) << "Mask file loaded correctly";
 }
 
 // This function is called on prefetch thread

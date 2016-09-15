@@ -133,6 +133,9 @@ class CPMDataLayer : public BasePrefetchingDataLayer<Dtype> {
 
     DataReader reader_;
     Blob<Dtype> transformed_label_; // add another blob
+    uint32_t *mask_camera_;
+    uint32_t *mask_action_;
+    uint32_t *mask_person_;
     //Blob<Dtype> transformed_label_all_; // all peaks, including others
 };
 

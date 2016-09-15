@@ -31,8 +31,10 @@ layer {
   bottom: "label"
   top: "label_lower"
   top: "label_1st_lower"
+  top: "metadata"
   slice_param {
     slice_point: 18
+    slice_point: 36
     axis: 1
   }
 }
@@ -337,11 +339,12 @@ layer {
   name: "manifolds_stage1"
   type: "Python"
   bottom: "conv7_stage1_new"
+  bottom: "metadata"
   top: "manifolds_stage1"
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3}"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1 }"
   }
 }
 layer {
@@ -688,11 +691,12 @@ layer {
   name: "manifolds_stage2"
   type: "Python"
   bottom: "Mconv5_stage2_new"
+  bottom: "metadata"
   top: "manifolds_stage2"
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3}"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1 }"
   }
 }
 layer {
@@ -910,11 +914,12 @@ layer {
   name: "manifolds_stage3"
   type: "Python"
   bottom: "Mconv5_stage3_new"
+  bottom: "metadata"
   top: "manifolds_stage3"
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3}"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1 }"
   }
 }
 layer {
@@ -1132,11 +1137,12 @@ layer {
   name: "manifolds_stage4"
   type: "Python"
   bottom: "Mconv5_stage4_new"
+  bottom: "metadata"
   top: "manifolds_stage4"
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3}"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1 }"
   }
 }
 layer {
@@ -1354,11 +1360,12 @@ layer {
   name: "manifolds_stage5"
   type: "Python"
   bottom: "Mconv5_stage5_new"
+  bottom: "metadata"
   top: "manifolds_stage5"
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3}"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1 }"
   }
 }
 layer {

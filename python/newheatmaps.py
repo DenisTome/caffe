@@ -25,14 +25,18 @@ class MyCustomLayer(caffe.Layer):
         self.debug_mode = yaml.load(self.param_str)["debug_mode"]
         self.max_area = yaml.load(self.param_str)["max_area"]
         self.percentage_max = yaml.load(self.param_str)["percentage_max"]*0.01
+
+        # TODO: load the masks        
         
         # check input dimension
-        if (len(bottom) != 1):
-            raise Exception('This layer expects to receive as input only the heatmaps generated at the previous layer')
+        if (len(bottom) != 2):
+            raise Exception('This layer expects to receive as input the heatmaps generated at the previous layer plus metadata')
         if (len(top) != 1):
             raise Exception('This layer produces only one output blob')
         if (bottom[0].data.shape[1] != self.num_joints):
             raise Exception('Expected different number of heat-maps')
+        if (bottom[1].data.shape[1] != 1):
+            raise Exception('All metadata must be contained in a single channel')
     
     def reshape(self, bottom, top):
         # Adjust the shapes of top blobs and internal buffers to accommodate the shapes of the bottom blobs.
@@ -129,6 +133,7 @@ class MyCustomLayer(caffe.Layer):
         
         for b in range(self.batch_size):
             # get new points
+            # TODO: retireve image number and perform the related actions
             points = self.manifoldDataConversion(input_heatMaps[b,:,:,:])
             heatMaps[b,:,:,:] = self.generateHeatMaps(points)
             
