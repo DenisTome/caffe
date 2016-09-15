@@ -17,25 +17,27 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
         # here we will return the new structure for loading h36m dataset
         n.data, n.tops['label'] = L.CPMData(cpmdata_param=dict(backend=1, source=data_source, batch_size=batch_size), 
                                                     transform_param=transform_param_in, ntop=2)
-        n.tops[label_name[1]], n.tops[label_name[0]] = L.Slice(n.label, slice_param=dict(axis=1, slice_point=18), ntop=2)
+        n.tops[label_name[1]], n.tops[label_name[0]], n.tops[label_name[2]] = L.Slice(n.label, slice_param=dict(axis=1, slice_point=[18,36]), ntop=3)
+        n.image, n.center_map = L.Slice(n.data, slice_param=dict(axis=1, slice_point=3), ntop=2)
     else:
         input = "data"
         dim1 = 1
-        dim2 = 4
+        dim2 = 5
         dim3 = 368
         dim4 = 368
         # make an empty "data" layer so the next layer accepting input will be able to take the correct blob name "data",
         # we will later have to remove this layer from the serialization string, since this is just a placeholder
         n.data = L.Layer()
+        # Slice layer slices input layer to multiple output along a given dimension
+        # axis: 1 define in which dimension to slice
+        # slice_point: 3 define the index in the selected dimension (the number of
+        # indices must be equal to the number of top blobs minus one)
+        # Considering input Nx3x1x1, by slice_point = 2
+        # top1 : Nx2x1x1
+        # top2 : Nx1x1x1
+        n.image, n.center_map, n.tops[label_name[2]] = L.Slice(n.data, slice_param=dict(axis=1, slice_point=[3,4]), ntop=3)
 
-    # Slice layer slices input layer to multiple output along a given dimension
-    # axis: 1 define in which dimension to slice
-    # slice_point: 3 define the index in the selected dimension (the number of
-    # indices must be equal to the number of top blobs minus one)
-    # Considering input Nx3x1x1, by slice_point = 2
-    # top1 : Nx2x1x1
-    # top2 : Nx1x1x1
-    n.image, n.center_map = L.Slice(n.data, slice_param=dict(axis=1, slice_point=3), ntop=2)
+    
     n.pool_center_lower = L.Pooling(n.center_map, kernel_size=9, stride=8, pool=P.Pooling.AVE)
 
     # just follow arrays..CPCPCPCPCCCC....
@@ -90,13 +92,9 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             pool_counter += 1
         elif layername[l] == 'M':
             last_manifold = 'manifolds_stage%d' % stage
-            n.tops[last_manifold] = L.Python(n.tops[last_layer],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str='{"njoints": 17,"sigma": 1, "debug_mode": 0, "max_area": 100, "percentage_max": 3}'))#,loss_weight=1)
-            # TODO: remove this (just for test)            
-#            if deploy == False:            
-#                n.tops[last_manifold] = L.Python(n.tops['label_lower'],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str='{"njoints": 17,"sigma": 1, "debug_mode": 0}'))#,loss_weight=1)
-#            else:
-#                last_manifold = last_layer
-            # till here
+            # n.tops[label_name[2]]
+            parameters = '{"njoints": 17,"sigma": 1, "debug_mode": 0, "max_area": 100, "percentage_max": 3, "train": %u }' % (not deploy)
+            n.tops[last_manifold] = L.Python(n.tops[last_layer],n.tops[label_name[2]],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str=parameters))#,loss_weight=1)
         elif layername[l] == 'L':
             # Loss: n.loss layer is only in training and testing nets, but not in deploy net.
             if deploy == False:
@@ -250,5 +248,5 @@ if __name__ == "__main__":
                 kernel +=    [ 0 ] + [ 5 ] + [ 0 ] + [11, 11, 11,  1, 1 ] + [ 0 ]
                 stride +=    [ 0 ] + [ 1 ] + [ 0 ] + [ 1 ] * 5            + [ 0 ]
 
-    label_name = ['label_1st_lower', 'label_lower']
+    label_name = ['label_1st_lower', 'label_lower', 'metadata']
     writePrototxts(dataFolder, directory, batch_size, layername, kernel, stride, outCH, transform_param, d_caffemodel, label_name, solver_param)
