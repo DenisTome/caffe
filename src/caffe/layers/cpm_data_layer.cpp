@@ -98,7 +98,7 @@ void CPMDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
   std::ifstream masks;
   masks.open(path_file.c_str(), ios::binary);
   if (!masks){
-	  LOG(ERROR) << "Mask file missing";
+	  LOG(ERROR) << "Mask file is missing";
   }
 
   masks.read((char *)&size_mask, sizeof(uint32_t));
@@ -189,7 +189,10 @@ void CPMDataLayer<Dtype>::load_batch(Batch<Dtype>* batch) {
     } else {
       this->data_transformer_->Transform_nv(datum, 
         &(this->transformed_data_),
-        &(this->transformed_label_), cnt);
+        &(this->transformed_label_),
+        this->mask_camera_,
+        this->mask_action_,
+        this->mask_person_, cnt);
       ++cnt;
     }
     // if (this->output_labels_) {

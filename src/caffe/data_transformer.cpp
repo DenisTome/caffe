@@ -382,7 +382,7 @@ template<typename Dtype> void DataTransformer<Dtype>::Transform(const Datum& dat
   Transform(datum, transformed_data);
 }
 
-template<typename Dtype> void DataTransformer<Dtype>::Transform_nv(const Datum& datum, Blob<Dtype>* transformed_data, Blob<Dtype>* transformed_label, int cnt) {
+template<typename Dtype> void DataTransformer<Dtype>::Transform_nv(const Datum& datum, Blob<Dtype>* transformed_data, Blob<Dtype>* transformed_label, uint32_t *maskc, uint32_t *maska, uint32_t *maskp, int cnt) {
   //std::cout << "Function 2 is used"; std::cout.flush();
   const int datum_channels = datum.channels();
   //const int datum_height = datum.height();
@@ -423,10 +423,10 @@ template<typename Dtype> void DataTransformer<Dtype>::Transform_nv(const Datum& 
   Dtype* transformed_data_pointer = transformed_data->mutable_cpu_data();
   Dtype* transformed_label_pointer = transformed_label->mutable_cpu_data();
 
-  Transform_nv(datum, transformed_data_pointer, transformed_label_pointer, cnt); //call function 1
+  Transform_nv(datum, transformed_data_pointer, transformed_label_pointer, maskc, maska, maskp, cnt); //call function 1
 }
 
-template<typename Dtype> void DataTransformer<Dtype>::Transform_nv(const Datum& datum, Dtype* transformed_data, Dtype* transformed_label, int cnt) {
+template<typename Dtype> void DataTransformer<Dtype>::Transform_nv(const Datum& datum, Dtype* transformed_data, Dtype* transformed_label, uint32_t *maskc, uint32_t *maska, uint32_t *maskp, int cnt) {
   
   //TODO: some parameter should be set in prototxt
   int clahe_tileSize = param_.clahe_tile_size();
@@ -557,7 +557,7 @@ template<typename Dtype> void DataTransformer<Dtype>::Transform_nv(const Datum& 
   // generate data for the 4th dimension (heat map for the center of the person)
   putGaussianMaps(transformed_data + 3*offset, meta.objpos, 1, img_aug.cols, img_aug.rows, param_.sigma_center());
   //LOG(INFO) << "image transformation done!";
-  generateLabelMap(transformed_label, img_aug, meta);
+  generateLabelMap(transformed_label, img_aug, meta, maskc, maska, maskp);
 
   //starts to visualize everything (transformed_data in 4 ch, label) fed into conv1
   //if(param_.visualize()){
@@ -782,7 +782,7 @@ void DataTransformer<Dtype>::putGaussianMaps(Dtype* entry, Point2f center, int s
 }
 
 template<typename Dtype>
-void DataTransformer<Dtype>::generateLabelMap(Dtype* transformed_label, Mat& img_aug, MetaData meta) {
+void DataTransformer<Dtype>::generateLabelMap(Dtype* transformed_label, Mat& img_aug, MetaData meta, uint32_t *maskc, uint32_t *maska, uint32_t *maskp) {
   int rezX = img_aug.cols;
   int rezY = img_aug.rows;
   int stride = param_.stride();
@@ -847,7 +847,13 @@ void DataTransformer<Dtype>::generateLabelMap(Dtype* transformed_label, Mat& img
   // Be careful, because we wont to store here data in a uint8 "pixel" of the channel. The maximum representable value is 255
   // If we want to put data here, we have to account for the maximum value we are going to use. We are using int (4 bytes).
   int metadata_offset = 2*(np + 1)*channelOffset;
-  transformed_label[metadata_offset] = int(meta.annolist_index);
+  int mask_offset = 4;
+  int idx = meta.annolist_index-1;
+  // TODO: change here
+  transformed_label[metadata_offset + 0*mask_offset] = uint32_t(1);
+  transformed_label[metadata_offset + 1*mask_offset] = uint32_t(2);
+  transformed_label[metadata_offset + 2*mask_offset] = uint32_t(3);
+  transformed_label[metadata_offset + 3*mask_offset] = uint32_t(4);
   //LOF(INFO) << "metadata put";
 
   //visualize

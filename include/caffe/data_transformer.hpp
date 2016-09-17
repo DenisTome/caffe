@@ -38,9 +38,12 @@ class DataTransformer {
    * @param transformed_blob
    *    This is destination blob. It can be part of top blob's data if
    *    set_cpu_data() is used. See data_layer.cpp for an example.
+   * @param maskc, maska, maskp
+   * 	Masks defining for each frame the camera used to take the frame, the action
+   * 	the actor is performing and the person that is performing.
    */
   void Transform(const Datum& datum, Blob<Dtype>* transformed_blob);
-  void Transform_nv(const Datum& datum, Blob<Dtype>* transformed_blob, Blob<Dtype>* transformed_label_blob, int cnt); //image and label
+  void Transform_nv(const Datum& datum, Blob<Dtype>* transformed_blob, Blob<Dtype>* transformed_label_blob, uint32_t *maskc, uint32_t *maska, uint32_t *maskp, int cnt); //image and label
   /**
    * @brief Applies the transformation defined in the data layer's
    * transform_param block to a vector of Datum.
@@ -167,7 +170,7 @@ class DataTransformer {
     vector<Joints> joint_others; //length is numOtherPeople
   };
 
-  void generateLabelMap(Dtype*, Mat&, MetaData meta);
+  void generateLabelMap(Dtype*, Mat&, MetaData meta, uint32_t *maskc, uint32_t *maska, uint32_t *maskp);
   void visualize(Mat& img, MetaData meta, AugmentSelection as);
 
   bool augmentation_flip(Mat& img, Mat& img_aug, MetaData& meta);
@@ -198,7 +201,7 @@ class DataTransformer {
   virtual int Rand(int n);
 
   void Transform(const Datum& datum, Dtype* transformed_data);
-  void Transform_nv(const Datum& datum, Dtype* transformed_data, Dtype* transformed_label, int cnt);
+  void Transform_nv(const Datum& datum, Dtype* transformed_data, Dtype* transformed_label, uint32_t *maskc, uint32_t *maska, uint32_t *maskp, int cnt);
   void ReadMetaData(MetaData& meta, const string& data, size_t offset3, size_t offset1);
   void TransformMetaJoints(MetaData& meta);
   void TransformJoints(Joints& joints);

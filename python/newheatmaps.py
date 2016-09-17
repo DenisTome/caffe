@@ -25,8 +25,14 @@ class MyCustomLayer(caffe.Layer):
         self.debug_mode = yaml.load(self.param_str)["debug_mode"]
         self.max_area = yaml.load(self.param_str)["max_area"]
         self.percentage_max = yaml.load(self.param_str)["percentage_max"]*0.01
+        self.train = bool(yaml.load(self.param_str)["train"])
 
-        # TODO: load the masks        
+        # TODO: write the camera rotation matrices
+        # is there any difference between training and testing at this point?
+        # I am supposed to receive all the data I need here, without applying any
+        # kind of mask.
+
+        # TODO: load manifold data
         
         # check input dimension
         if (len(bottom) != 2):
@@ -127,11 +133,24 @@ class MyCustomLayer(caffe.Layer):
         points = mean_values        
         return points
     
+    def extractMetadata(self, channel):
+        # data written in c++ row-wise (from column 1 to column n)
+        camera = -1
+        action = -1
+        person = -1      
+        el1 = channel[0,0,0]
+        el2 = channel[0,1,0]
+        el3 = channel[0,2,0]
+        raise Exception('%r\n%r\n%r' % (el1,el2,el3))
+        return camera, action, person
+        
     def forward(self, bottom, top):
         input_heatMaps = bottom[0].data[...]
         heatMaps = np.zeros((self.batch_size, self.num_joints, self.input_size, self.input_size))
+        metadata = bottom[1].data[...]
         
         for b in range(self.batch_size):
+            (camera,action,person) = self.extractMetadata(metadata[b,:,:,:])
             # get new points
             # TODO: retireve image number and perform the related actions
             points = self.manifoldDataConversion(input_heatMaps[b,:,:,:])
