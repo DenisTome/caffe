@@ -137,11 +137,12 @@ class MyCustomLayer(caffe.Layer):
         # data written in c++ row-wise (from column 1 to column n)
         camera = -1
         action = -1
-        person = -1      
-        el1 = channel[0,0,0]
-        el2 = channel[0,1,0]
-        el3 = channel[0,2,0]
-        raise Exception('%r\n%r\n%r' % (el1,el2,el3))
+        person = -1 
+        idx    = channel[0,0,0]
+        camera = channel[0,0,1]
+        action = channel[0,0,2]
+        person = channel[0,0,3]
+        raise Exception('%r\n%r\n%r\n%r' % (idx,camera,action,person))
         return camera, action, person
         
     def forward(self, bottom, top):

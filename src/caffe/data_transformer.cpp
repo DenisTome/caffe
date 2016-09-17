@@ -847,13 +847,11 @@ void DataTransformer<Dtype>::generateLabelMap(Dtype* transformed_label, Mat& img
   // Be careful, because we wont to store here data in a uint8 "pixel" of the channel. The maximum representable value is 255
   // If we want to put data here, we have to account for the maximum value we are going to use. We are using int (4 bytes).
   int metadata_offset = 2*(np + 1)*channelOffset;
-  int mask_offset = 4;
   int idx = meta.annolist_index-1;
-  // TODO: change here
-  transformed_label[metadata_offset + 0*mask_offset] = uint32_t(1);
-  transformed_label[metadata_offset + 1*mask_offset] = uint32_t(2);
-  transformed_label[metadata_offset + 2*mask_offset] = uint32_t(3);
-  transformed_label[metadata_offset + 3*mask_offset] = uint32_t(4);
+  transformed_label[metadata_offset] 	 = uint32_t(idx);
+  transformed_label[metadata_offset + 1] = maskc[idx];
+  transformed_label[metadata_offset + 2] = maska[idx];
+  transformed_label[metadata_offset + 3] = maskp[idx];
   //LOF(INFO) << "metadata put";
 
   //visualize
