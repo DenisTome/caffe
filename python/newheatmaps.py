@@ -17,6 +17,9 @@ from scipy.stats import multivariate_normal
 class MyCustomLayer(caffe.Layer):
     
     def setup(self, bottom, top):
+        """Set up the layer used for defining constraints to the expected inputs
+        and for reading the parameters from the prototxt file.        
+        """
         # extract data from prototxt
         self.num_joints = yaml.load(self.param_str)["njoints"] + 1
         self.batch_size = bottom[0].data.shape[0]
@@ -45,11 +48,15 @@ class MyCustomLayer(caffe.Layer):
             raise Exception('All metadata must be contained in a single channel')
     
     def reshape(self, bottom, top):
+        """Reshape output according to the input. We want to keep the same dimensionality"""
         # Adjust the shapes of top blobs and internal buffers to accommodate the shapes of the bottom blobs.
         # Bottom has the same shape of input
         top[0].reshape(*bottom[0].data.shape)
     
     def findCoordinate(self, heatMap):
+        """Given a heat-map of a squared dimension, identify the joint position as the 
+        point with the highest likelihood. If there is not such a point, it returns
+        the center of the heat-map as predicted joint position."""
         idx = np.where(heatMap == heatMap.max())
         x = idx[1][0]
         y = idx[0][0]
@@ -59,12 +66,17 @@ class MyCustomLayer(caffe.Layer):
         return x,y
     
     def generateGaussian(self, pos, mean, Sigma):
+        """Generate heat-map identifying the joint position. The probability distribution
+        representing the joint position is a Gaussian with a given mean value representing
+        the joint position and a given covariance matrix Sigma (sigma*I) representing 
+        the uncertainty of the joint estimation)."""
         rv = multivariate_normal([mean[1],mean[0]], Sigma)
         tmp = rv.pdf(pos)
         hmap = np.multiply(tmp, np.sqrt(np.power(2*np.pi,2)*np.linalg.det(Sigma)))
         return hmap
     
     def generateHeatMaps(self, points):
+        """Generate heat-maps for all the joint in the skeleton."""
         heatMaps = np.zeros((self.num_joints, self.input_size, self.input_size))
         sigma_sq = np.power(self.sigma,2)
         Sigma = [[sigma_sq,0],[0,sigma_sq]]
@@ -79,6 +91,9 @@ class MyCustomLayer(caffe.Layer):
         return heatMaps
     
     def findMeanCovariance(self, heatMap):
+        """Given a heat-map representing the likelihood of the joint in the image
+        identify the joint position and the relative joint uncertainty represented 
+        as the covariance matrix."""
         mean_value = self.findCoordinate(heatMap)
         # at the beginning there might be heatmaps with all zero values
         if (heatMap[mean_value[1],mean_value[0]] == 0):
@@ -134,24 +149,22 @@ class MyCustomLayer(caffe.Layer):
         return points
     
     def extractMetadata(self, channel):
+        """Given a channel, extract the metadata about the frame."""
         # data written in c++ row-wise (from column 1 to column n)
-        camera = -1
-        action = -1
-        person = -1 
         idx    = channel[0,0,0]
         camera = channel[0,0,1]
         action = channel[0,0,2]
         person = channel[0,0,3]
-        raise Exception('%r\n%r\n%r\n%r' % (idx,camera,action,person))
-        return camera, action, person
+        return idx, camera, action, person
         
     def forward(self, bottom, top):
+        """Forward data in the architecture to the following layer."""
         input_heatMaps = bottom[0].data[...]
         heatMaps = np.zeros((self.batch_size, self.num_joints, self.input_size, self.input_size))
         metadata = bottom[1].data[...]
         
         for b in range(self.batch_size):
-            (camera,action,person) = self.extractMetadata(metadata[b,:,:,:])
+            (_, camera, _, _) = self.extractMetadata(metadata[b,:,:,:])
             # get new points
             # TODO: retireve image number and perform the related actions
             points = self.manifoldDataConversion(input_heatMaps[b,:,:,:])
@@ -175,6 +188,7 @@ class MyCustomLayer(caffe.Layer):
         #pass
     
     def backward(self, top, propagate_down, bottom):
+        """Backward data in the learning phase. This layer does not propagate back information."""
         bottom[0].diff[...] = np.zeros(bottom[0].data.shape)
         #pass
         

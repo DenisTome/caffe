@@ -93,7 +93,7 @@ void CPMDataLayer<Dtype>::DataLayerSetUp(const vector<Blob<Dtype>*>& bottom,
   }
 
   // Load mask file and generate mask arrays
-  string path_file = "models/cpm_architecture/masks";
+  string path_file = "models/cpm_architecture/data/masks";
   uint32_t size_mask;
   std::ifstream masks;
   masks.open(path_file.c_str(), ios::binary);
