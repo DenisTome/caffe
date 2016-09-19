@@ -25,6 +25,7 @@
 
 # Compiled MATLAB
 *.mex*
+*.mat
 
 # IPython notebook checkpoints
 .ipynb_checkpoints

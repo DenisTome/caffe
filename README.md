@@ -12,6 +12,10 @@
 0. change the genJSON.py to include also 3D joint positions, as well as 2D joint positions
 0. generate individual images from the train-set (subjects: 1,5,6,7,8)
 
+## TODOs
+0. copy segmentation, upright_cam, upright_fast.so and ceres files into the $CAFFE_HOME_CPM/python/manifold directory
+0. copy camera_param.mat and train_basis_allactions.mat files into the $CAFFE_HOME_CPM/models/cpm_architecture/data directory
+
 ## Fine-tuning a CNN for detection with Caffe
 <pre>
   GLOG_logtostderr=1 build/tools/caffe train \
