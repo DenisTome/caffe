@@ -47,7 +47,8 @@ class MyCustomLayer(caffe.Layer):
         self.max_area = yaml.load(self.param_str)["max_area"]
         self.percentage_max = yaml.load(self.param_str)["percentage_max"]*0.01
         # TODO: check if it's still needed
-        self.train = bool(yaml.load(self.param_str)["train"])        
+        self.train = bool(yaml.load(self.param_str)["train"])
+        self.Lambda = bool(yaml.load(self.param_str)["Lambda"]) 
         (self.default_r, self.e, self.z, self.weights) = self.load_parameters()
 
         # check input dimension
@@ -101,7 +102,7 @@ class MyCustomLayer(caffe.Layer):
         pos = np.dstack((x, y))
         
         for i in range(self.num_joints):
-            heatMaps[i,:,:] = self.generateGaussian(pos, points[i,:], Sigma)
+            heatMaps[i,:,:] = self.generateGaussian(pos, points[:,i], Sigma)
         # generating last heat maps which contains all joint positions
         heatMaps[-1,:,:] =  heatMaps[0:heatMaps.shape[0]-1,:,:].max(axis=0)
         return heatMaps
@@ -137,7 +138,7 @@ class MyCustomLayer(caffe.Layer):
         
         # it does not matter that we are considering a small portion of the 
         # heatmap (we are just estimating the covariance matrix which is independent
-        # on the mean value)==0 I would expect the mean values to be in (0,0) 
+        # on the mean value, whatever it is).
         heatmap_area = heatMap[area[1]:area[3],area[0]:area[2]]
         heatmap_area = np.divide(heatmap_area,np.sum(heatmap_area))
 #        heatmap_area = np.divide(heatmap_area,np.nansum(heatmap_area))
@@ -150,39 +151,17 @@ class MyCustomLayer(caffe.Layer):
     
         cov_matrix = np.dot(M,np.transpose(np.multiply(M,flatten_hm)))
         return mean_value, cov_matrix.flatten()
-        
     
-    def manifoldDataConversion(self, heatMaps, camera):
-        # TODO: from the 2D points project the new 3D points
-        points = np.zeros((self.num_joints,2))
-        mean_values = np.zeros((self.num_joints,2))
-        covariance_matrices = np.zeros((self.num_joints,4))
-        # the last one is the overall heat-map
-        for j in range(self.num_joints):
-            mean_values[j,:],covariance_matrices[j,:] = self.findMeanCovariance(heatMaps[j,:,:])
-        # Points contains the new projected points
-        points = mean_values        
-        return points
-    
-    def extractMetadata(self, channel):
-        """Given a channel, extract the metadata about the frame."""
-        # data written in c++ row-wise (from column 1 to column n)
-        idx    = channel[0,0,0]
-       c amera = channel[0,0,1]
-        action = channel[0,0,2]
-        person = channel[0,0,3]
-        return idx, camera, action, person
-
-    def centre(m):
+    def centre(self, m):
         """Returns centered data in position (0,0)"""
         return ((m.T - m.mean(1)).T, m.mean(1))
           
-    def normalise_data(w):
+    def normalise_data(self, w):
         """Normalise data by centering all the 2d skeletons (0,0) and by rescaling
         all of them such that the height is 2.0 (expressed in meters).
         """
         w = w.reshape(-1,2).transpose(1,0)
-        d2,mean = centre(w)
+        (d2, mean) = self.centre(w)
         
         m2 = d2[1,:].min(0)/2.0
         m2 = m2-d2[1,:].max(0)/2.0
@@ -192,11 +171,54 @@ class MyCustomLayer(caffe.Layer):
         d2 /= m2
         return (d2, m2, mean)
     
-    def project2D(r,z,a,e,R_c,scale):
-        """Project 3D points into 2D."""
+    def project2D(self, r, z, a, e, R_c, scale):
+        """Project 3D points into 2D and return them in the same scale as the given 
+        2D predicted points."""
         mod = uc.build_model(a, e, z)
         p = uc.project_model(mod, R_c, r)
+        p *= scale
         return p
+    
+    def manifoldDataConversion(self, heatMaps, camera):
+        """Apply the manifold model on the predicted 2D joint positions. This involves to
+        preprocess the skeleton by normalising it in order to have something comparable across the
+        people and the frameworks. This scale is then kept to go back to the original size.
+        Given the new normalised 2D joint positions, the manifold is used to identify the 3D 
+        skeleton which is then projected back into 2D, defining the new 2D joint positions.
+        Each joint is then considered individually to generate the relative heat map associated
+        with it what will be used in the following layers in the architecture."""
+        points = np.zeros((self.num_joints,2))
+        mean_values = np.zeros((self.num_joints,2))
+        covariance_matrices = np.zeros((self.num_joints,4))
+        
+        # extract the joint positions with the relative unicertainty. Individually for each joint.
+        for j in range(self.num_joints):
+            mean_values[j,:],covariance_matrices[j,:] = self.findMeanCovariance(heatMaps[j])
+        
+        # normalise data; w are the normalised 2d points; s scaled;
+        (w, s, mean) = self.normalise_data(mean_values.flatten())  
+        w = w[np.newaxis,:]
+        
+        # compute parameters
+        (a, r) = uc.estimate_a_and_r(w, self.e, self.z, self.default_r[camera], self.Lambda*self.weights)
+        for j in xrange(10):
+            r = uc.reestimate_r(w, self.z, a, self.e, self.default_r[camera], r)
+            (a, res) = uc.reestimate_a(w, self.e, self.z, r, self.default_r[camera], self.Lambda*self.weights)
+        
+        points = self.project2D(r, self.z, a, self.e, self.default_r[camera], s).squeeze()
+        points += mean[:,np.newaxis]
+    
+        return points
+    
+    def extractMetadata(self, channel):
+        """Given a channel, extract the metadata about the frame."""
+        # data written in c++ row-wise (from column 1 to column n)
+        # data have the Matlab format (index starting from 1)
+        idx    = channel[0,0,0]
+        camera = channel[0,0,1] - 1
+        action = channel[0,0,2]
+        person = channel[0,0,3]
+        return (idx, camera, action, person)
         
     def forward(self, bottom, top):
         """Forward data in the architecture to the following layer."""
@@ -204,28 +226,27 @@ class MyCustomLayer(caffe.Layer):
         heatMaps = np.zeros((self.batch_size, self.num_channels, self.input_size, self.input_size))
         metadata = bottom[1].data[...]
         
+        # consider each image in the batch individually
         for b in range(self.batch_size):
-            (_, camera, _, _) = self.extractMetadata(metadata[b,:,:,:])
+            (_, camera, _, _) = self.extractMetadata(metadata[b])
             # get new points
-            # TODO: retireve image number and perform the related actions
-            points = self.manifoldDataConversion(input_heatMaps[b,:,:,:], camera)
-            heatMaps[b,:,:,:] = self.generateHeatMaps(points)
+            points = self.manifoldDataConversion(input_heatMaps[b], camera)
+            heatMaps[b] = self.generateHeatMaps(points)
             
             if (self.debug_mode):
                 for j in range(self.num_channels):
                     name = '%s/tmp/batch_%d_beforeafter_%d.png' % (os.environ['HOME'], b, j)
                     if (np.max(input_heatMaps[b,j,:,:]) > 0):
-                        rescaled_input = np.divide(input_heatMaps[b,j,:,:],np.max(input_heatMaps[b,j,:,:]))
+                        rescaled_input = np.divide(input_heatMaps[b,j],np.max(input_heatMaps[b,j]))
                     else:
-                        rescaled_input = input_heatMaps[b,j,:,:]
-                    vis = np.concatenate((rescaled_input, heatMaps[b,j,:,:]), axis=1)
+                        rescaled_input = input_heatMaps[b,j]
+                    vis = np.concatenate((rescaled_input, heatMaps[b,j]), axis=1)
                     plt.imsave(name,vis)
-                    if (np.max(input_heatMaps[b,j,:,:]) == 0):
+                    if (np.max(input_heatMaps[b,j]) == 0):
                         name = '%s/tmp/exception_zero_%d_%d.png' % (os.environ['HOME'], b, j)
                         plt.imsave(name,vis)
         
-        # TODO: change it to heatMaps
-        top[0].data[...] = input_heatMaps
+        top[0].data[...] = heatMaps
         #pass
     
     def backward(self, top, propagate_down, bottom):

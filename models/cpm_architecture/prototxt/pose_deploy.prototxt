@@ -293,7 +293,7 @@ layer {
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 0 }"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 0, \"Lambda\": 0.050 }"
   }
 }
 layer {
@@ -638,7 +638,7 @@ layer {
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 0 }"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 0, \"Lambda\": 0.050 }"
   }
 }
 layer {
@@ -854,7 +854,7 @@ layer {
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 0 }"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 0, \"Lambda\": 0.050 }"
   }
 }
 layer {
@@ -1070,7 +1070,7 @@ layer {
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 0 }"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 0, \"Lambda\": 0.050 }"
   }
 }
 layer {
@@ -1286,7 +1286,7 @@ layer {
   python_param {
     module: "newheatmaps"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 0 }"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 0, \"Lambda\": 0.050 }"
   }
 }
 layer {
