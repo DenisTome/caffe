@@ -48,7 +48,7 @@ class MyCustomLayer(caffe.Layer):
         self.percentage_max = yaml.load(self.param_str)["percentage_max"]*0.01
         # TODO: check if it's still needed
         self.train = bool(yaml.load(self.param_str)["train"])
-        self.Lambda = bool(yaml.load(self.param_str)["Lambda"]) 
+        self.Lambda = yaml.load(self.param_str)["Lambda"]
         (self.default_r, self.e, self.z, self.weights) = self.load_parameters()
 
         # check input dimension
@@ -187,7 +187,7 @@ class MyCustomLayer(caffe.Layer):
         skeleton which is then projected back into 2D, defining the new 2D joint positions.
         Each joint is then considered individually to generate the relative heat map associated
         with it what will be used in the following layers in the architecture."""
-        points = np.zeros((self.num_joints,2))
+#        points = np.zeros((2,self.num_joints))
         mean_values = np.zeros((self.num_joints,2))
         covariance_matrices = np.zeros((self.num_joints,4))
         
@@ -196,7 +196,7 @@ class MyCustomLayer(caffe.Layer):
             mean_values[j,:],covariance_matrices[j,:] = self.findMeanCovariance(heatMaps[j])
         
         # normalise data; w are the normalised 2d points; s scaled;
-        (w, s, mean) = self.normalise_data(mean_values.flatten())  
+        (w, s, mean) = self.normalise_data(mean_values.flatten())
         w = w[np.newaxis,:]
         
         # compute parameters
@@ -207,7 +207,7 @@ class MyCustomLayer(caffe.Layer):
         
         points = self.project2D(r, self.z, a, self.e, self.default_r[camera], s).squeeze()
         points += mean[:,np.newaxis]
-    
+        
         return points
     
     def extractMetadata(self, channel):

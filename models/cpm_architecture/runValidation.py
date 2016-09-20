@@ -12,6 +12,7 @@ import cv2
 import json
 import numpy as np
 from scipy.stats import multivariate_normal
+import scipy.io as sio
 import matplotlib.pyplot as plt
 
 # general settings
@@ -114,7 +115,24 @@ def findPoint(heatMap):
     y = idx[0][0]
     return x,y
 
-def runCaffeOnModel(data, model_dir, def_file, idx):
+def generateChannel(frame_number, masks):
+    # extract data; all the index problem about the masks are hendled inside the manifold layer
+    # we just need the correct frame index here
+    camera = masks['mask_camera'][0,frame_number-1]
+    action = masks['mask_action'][0,frame_number-1]
+    person = masks['mask_person'][0,frame_number-1]
+    
+    metadata = np.zeros((inputSizeNN,inputSizeNN))
+    metadata[0,0,0] = frame_number
+    metadata[0,1,0] = camera
+    metadata[0,2,0] = action
+    metadata[0,3,0] = person
+    
+    metadata = metadata[:,:,np.newaxis]
+    return metadata
+    
+
+def runCaffeOnModel(data, model_dir, def_file, idx, masks):
     layer_names = ['conv7_stage1_new', 'Mconv5_stage2_new', 'Mconv5_stage3_new',
                'Mconv5_stage4_new', 'Mconv5_stage5_new', 'Mconv5_stage6_new']
     loss_stage = np.zeros(len(layer_names))
@@ -127,6 +145,7 @@ def runCaffeOnModel(data, model_dir, def_file, idx):
     
     print 'Loading model...'
     net = caffe.Net(def_file, model_dir, caffe.TEST)
+    print 'Done.'
     for i in range(len(idx)):
         if (np.mod(i,fn_notification) == 0):
             print 'Iteration %d out of %d' % (i+1, len(idx))
@@ -177,6 +196,8 @@ def runCaffeOnModel(data, model_dir, def_file, idx):
             plt.waitforbuttonpress()
         
         labels, center = generateHeatMaps(center, joints)
+        # TODO: check that annolist_index is loaded correctly
+        metadata = generateChannel(data['annolist_index'], masks)
         
         if (verbose):
             for j in range(len(joints) + 1):
@@ -186,7 +207,8 @@ def runCaffeOnModel(data, model_dir, def_file, idx):
         resizedImage = np.divide(resizedImage,float(256))
         resizedImage = np.subtract(resizedImage, 0.5)
 
-        img4ch = np.concatenate((resizedImage, center), axis=2)
+        # TODO: check that everything works fine here
+        img4ch = np.concatenate((resizedImage, center, metadata), axis=2)
         img4ch = np.transpose(img4ch, (2, 0, 1))
         
         net.blobs['data'].data[...] = img4ch
@@ -242,7 +264,7 @@ def getIter(item):
     iter_match = regex_iteration.search(item)
     return int(iter_match.group(1))
 
-def getLossOnValidationSet(json_file, models):
+def getLossOnValidationSet(json_file, models, mask_file):
     prototxt = models + 'pose_deploy.prototxt'
     files = [f for f in os.listdir(models) if f.endswith('.caffemodel')]
     files = sorted(files, key=getIter)
@@ -253,7 +275,12 @@ def getLossOnValidationSet(json_file, models):
         data_this = json.load(data_file)
         data_this = data_this['root']
         data = data_this
-        
+    print 'Done.'
+    # index is in Matlab format
+    print 'Loading mask file...'
+    masks = sio.loadmat(mask_file)
+    print 'Done.'
+    
     numSample = len(data)
     print 'overall data %d' % len(data)
     idx = range(0, numSample, samplingRate)
@@ -262,7 +289,7 @@ def getLossOnValidationSet(json_file, models):
         model_dir = '%s/%s' % (models, files[i])
         if (getIter(model_dir) < iter_start_from):
             continue
-        new_val = runCaffeOnModel(data, model_dir, prototxt, idx)
+        new_val = runCaffeOnModel(data, model_dir, prototxt, idx, masks)
         val = combine_data(val, new_val)
     return val
 
@@ -273,9 +300,10 @@ def main():
     caffe_dir = os.environ.get('CAFFE_HOME_CPM')
     json_file = '%s/models/cpm_architecture/jsonDatasets/H36M_annotations.json' % caffe_dir
     caffe_models_dir = '%s/models/cpm_architecture/prototxt/caffemodel/trial_5/' % caffe_dir
+    mask_file = '%s/models/cpm_architecture/jsonDatasets/H36M_masks.mat' % caffe_dir
     output_file = '%svalidation_tmp.json' % caffe_models_dir
     
-    loss = getLossOnValidationSet(json_file, caffe_models_dir)
+    loss = getLossOnValidationSet(json_file, caffe_models_dir, mask_file)
     
     with open(output_file, 'w+') as out:
         json.dump(loss, out)

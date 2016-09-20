@@ -9,6 +9,7 @@ import re
 import matplotlib.pyplot as plt
 import json
 import stat
+import numpy as np
 from mpldatacursor import datacursor
 
 def parse_log(path_to_log, val_filename = []):
@@ -112,10 +113,10 @@ def smoothed_data(x, y, batch_size):
     for i in range(int(len(x)/batch_size)):
         curr_batch = y[i*batch_size:(i+1)*batch_size]
         smoothed_x.append(x[(i+1)*batch_size])
-        smoothed_y.append(mean(curr_batch))
+        smoothed_y.append(np.mean(curr_batch))
     # Consider elements left
     smoothed_x.append(x[-1])
-    smoothed_y.append(mean(y[i*batch_size:]))
+    smoothed_y.append(np.mean(y[i*batch_size:]))
     return smoothed_x, smoothed_y
     
 def mergeLogFiles(filenames, out_filename, merge):
@@ -220,14 +221,14 @@ def main():
     #filename = ['prototxt/caffemodel/trial_5/log.txt']
     #filename = ['prototxt/caffemodel/trial_3/log.txt','prototxt/log.txt']
     #filename = ['prototxt/log1.txt','prototxt/log.txt']
-    filename = ['prototxt/log.txt']
+    filename = ['prototxt/log_merging.txt']
     #val_filename = ['prototxt/caffemodel/trial_5/validation.json']
     val_filename = []
-    stn_lrm = 1
+    stn_lrm = 1e-4
     nstages = 6
-    merge = [50000, 0]
+#    merge = [50000, 0]
     finetune_iter = 50000
-    #merge = [0]
+    merge = [0]
     train, val, base_lr, stepsize = parse_log(filename[0], val_filename)
     print 'Num iterations file = %d' % (train['iteration'][-1])
     if (len(filename) > 1):
@@ -235,7 +236,7 @@ def main():
             curr_tr, curr_ts, base_lr_, stepsize_ = parse_log(filename[i], val_filename[i])
             print 'Num iterations file = %d' % (curr_tr['iteration'][-1])
             train, val = combine_data(train, val, curr_tr, curr_ts, merge[i-1])
-    main_title = 'Training with:\nbase_lr = %f; stepsize = %d; lr_mul = %d\nFinetuning: trial_5; Iter = %d ' % (base_lr, stepsize, stn_lrm, finetune_iter)
+    main_title = 'Training with:\nbase_lr = %f; stepsize = %d; lr_mul = %f\nFinetuning: trial_5; Iter = %d ' % (base_lr, stepsize, stn_lrm, finetune_iter)
     plotData(train, val, nstages, main_title, avg_line = True, avg_batch_size = 50)
     
     if (len(filename) > 1):
