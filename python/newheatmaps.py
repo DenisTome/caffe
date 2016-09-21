@@ -119,6 +119,13 @@ class MyCustomLayer(caffe.Layer):
             return mean_value, M.flatten()
         
         idx = np.where(heatMap >= heatMap.max()* self.percentage_max)
+        # there are some cases (especially at the beginning) where the heat-map is noise
+        # and this condition may not be satisfied
+        if (len(idx[0]) == 0):
+            sigma_sq = heatMap.shape[0]*heatMap.shape[0]
+            M = np.array([[sigma_sq, 0], [0, sigma_sq]])
+            return mean_value, M.flatten()
+            
         area = [np.min(idx[1]),np.min(idx[0]),np.max(idx[1]),np.max(idx[0])]
         if (np.max(np.abs([area[0]-mean_value[0],area[1]-mean_value[1],
                            area[2]-mean_value[0],area[3]-mean_value[1]])) > self.max_area):

@@ -49,7 +49,7 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
     drop_counter = 1
     state = 'image' # can be image or fuse
     share_point = 0
-
+    
     for l in range(0, len(layername)):
         if layername[l] == 'C':
             if state == 'image':
@@ -77,7 +77,7 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
                                                   weight_filler=dict(type='gaussian', std=0.01),
                                                   bias_filler=dict(type='constant'))
             last_layer = conv_name
-            if layername[l+1] != 'L':
+            if not(layername[l+1] == 'L' or layername[l+1] == 'M'):
                 if(state == 'image'):
                     ReLUname = 'relu%d_stage%d' % (conv_counter, stage)
                     n.tops[ReLUname] = L.ReLU(n.tops[last_layer], in_place=True)
@@ -93,7 +93,6 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
         elif layername[l] == 'M':
             last_manifold = 'manifolds_stage%d' % stage
             debug_mode = 0
-            # n.tops[label_name[2]]
             parameters = '{"njoints": 17,"sigma": 1, "debug_mode": %r, "max_area": 100, "percentage_max": 3, "train": %u, "Lambda": %.3f }' % (debug_mode, not deploy, 0.05)
             n.tops[last_manifold] = L.Python(n.tops[last_layer],n.tops[label_name[2]],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str=parameters))#,loss_weight=1)
         elif layername[l] == 'L':
@@ -209,7 +208,7 @@ if __name__ == "__main__":
                         snapshot=snapshot, gpu=True)
     ### END
 
-    d_caffemodel = '%s/caffemodel' % directory # the place you want to store your caffemodel
+    d_caffemodel = '%s/caffemodel/manifold_merging' % directory # the place you want to store your caffemodel
 
     # num_parts and np_in_lmdb are two parameters that are used inside the framework to move from one
     # dataset definition to another. Num_parts is the number of parts we want to have, while
