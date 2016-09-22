@@ -205,7 +205,7 @@ if __name__ == "__main__":
     solver_param = dict(stepsize=50000, batch_size=batch_size, num_epochs=12, base_lr = base_lr,
                         train_size=115327, test_size=40649, test_interval=5000,
                         weight_decay=0.0005, lr_policy_fixed=False, disp_iter=5,
-                        snapshot=snapshot, gpu=True)
+                        snapshot=snapshot, gpu=False)
     ### END
 
     d_caffemodel = '%s/caffemodel/manifold_merging' % directory # the place you want to store your caffemodel
