@@ -11,7 +11,7 @@ import numpy as np
 import yaml
 import matplotlib.pyplot as plt
 # TODO: remove
-import cv2  
+#import cv2  
 from scipy.stats import multivariate_normal
 import scipy.io as sio
 import sys

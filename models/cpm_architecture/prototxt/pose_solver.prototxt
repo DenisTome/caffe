@@ -1,5 +1,5 @@
 net: "models/cpm_architecture/prototxt/pose_train_test.prototxt"
-#test_iter: 60972
+#test_iter: 487788
 #test_intervall: 5000
 base_lr: 0.000100
 momentum: 0.9
@@ -8,7 +8,7 @@ lr_policy: "step"
 stepsize: 50000
 gamma: 0.333
 display: 5
-max_iter: 172980
+max_iter: 1383924
 snapshot: 100
 snapshot_prefix: "models/cpm_architecture/prototxt/caffemodel/manifold_merging/pose"
 solver_mode: CPU

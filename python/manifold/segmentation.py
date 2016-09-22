@@ -406,8 +406,7 @@ def upper_bound(unary,nhood, overlap_weight):
     for i in xrange(nhood.shape[1]):
         u2[:]=unary[:,new_nhood[:,i]]
         u2*=mask[:,i]
-        if overlap_weight!=1:
-            u2*=overlap_weight
+        u2*=overlap_weight
         u+=u2
     guess=np.argmin(u,0)
     cost=u[(guess,np.arange(guess.size))].sum()

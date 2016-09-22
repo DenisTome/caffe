@@ -198,7 +198,7 @@ if __name__ == "__main__":
     path_in_caffe = 'models/cpm_architecture'
     directory = 'prototxt'
     dataFolder = '%s/lmdb/train' % (path_in_caffe)
-    batch_size = 8
+    batch_size = 1
     snapshot=100 #5000
     # base_lr = 1e-5 (8e-5)
     base_lr = 1e-4 #8e-5
