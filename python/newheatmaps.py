@@ -15,7 +15,9 @@ import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
 import scipy.io as sio
 import sys
-sys.path.insert(0,'python/manifold/')
+import os
+lib_path = os.environ['CAFFE_HOME_CPM']
+sys.path.insert(0,'%s/python/manifold/' % lib_path)
 
 import upright_cam as uc
 
@@ -23,7 +25,7 @@ class MyCustomLayer(caffe.Layer):
     
     def load_parameters(self):
         """Load trained parameters and camera rotation matrices"""
-        Dpath = 'models/cpm_architecture/data/'
+        Dpath = '%s/models/cpm_architecture/data/' % lib_path
         par   = sio.loadmat(Dpath+'camera_param.mat')
         train = sio.loadmat(Dpath + 'train_basis_allactions.mat')
         R    = np.empty((4,3,3))
@@ -228,6 +230,7 @@ class MyCustomLayer(caffe.Layer):
         return (idx, camera, action, person)
         
     def forward(self, bottom, top):
+        
         """Forward data in the architecture to the following layer."""
         input_heatMaps = bottom[0].data[...]
         heatMaps = np.zeros((self.batch_size, self.num_channels, self.input_size, self.input_size))
