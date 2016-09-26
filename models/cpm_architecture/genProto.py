@@ -63,14 +63,12 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             if ((stage == 1 and conv_counter == 7) or
                 (stage > 1 and state != 'image' and (conv_counter in [1, 5]))):
                 conv_name = '%s_new' % conv_name
-                #lr_m = 1e-3# 1 # changed -> using original model
-            #else:
-            lr_m = 1e-4 # 1e-3 (best res so far)
-            
+                # lr_m = 1 # 1e-3 (best res so far)
+            lr_m = 1e-3 # 1e-3 (best res so far)
             # additional for python layer
             if (stage > 1 and state != 'image' and (conv_counter == 1)):
                 conv_name = '%s_mf' % conv_name
-                lr_m = 1
+#                lr_m = 1e-2#1
             n.tops[conv_name] = L.Convolution(n.tops[last_layer], kernel_size=kernel[l],
                                                   num_output=outCH[l], pad=int(math.floor(kernel[l]/2)),
                                                   param=[dict(lr_mult=lr_m, decay_mult=1), dict(lr_mult=lr_m*2, decay_mult=0)],
@@ -115,7 +113,7 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
                 n.tops['drop%d_stage%d' % (drop_counter, stage)] = L.Dropout(n.tops[last_layer], in_place=True, dropout_param=dict(dropout_ratio=0.5))
                 drop_counter += 1
         elif layername[l] == '@':
-            n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.tops[last_manifold], n.pool_center_lower, concat_param=dict(axis=1))
+            n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.pool_center_lower, n.tops[last_manifold], concat_param=dict(axis=1))
             #n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.tops[last_manifold], n.pool_center_lower, concat_param=dict(axis=1))
                         
             #n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.pool_center_lower, concat_param=dict(axis=1))
@@ -199,7 +197,7 @@ if __name__ == "__main__":
     directory = 'prototxt'
     dataFolder = '%s/lmdb/train' % (path_in_caffe)
     batch_size = 8
-    snapshot=100 #5000
+    snapshot=200 #5000
     # base_lr = 1e-5 (8e-5)
     base_lr = 1e-4 #8e-5
     solver_param = dict(stepsize=50000, batch_size=batch_size, num_epochs=12, base_lr = base_lr,
@@ -208,7 +206,7 @@ if __name__ == "__main__":
                         snapshot=snapshot, gpu=True)
     ### END
 
-    d_caffemodel = '%s/caffemodel/manifold_merging2' % directory # the place you want to store your caffemodel
+    d_caffemodel = '%s/caffemodel/manifold_merging' % directory # the place you want to store your caffemodel
 
     # num_parts and np_in_lmdb are two parameters that are used inside the framework to move from one
     # dataset definition to another. Num_parts is the number of parts we want to have, while
