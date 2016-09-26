@@ -208,7 +208,7 @@ if __name__ == "__main__":
                         snapshot=snapshot, gpu=True)
     ### END
 
-    d_caffemodel = '%s/caffemodel/manifold_merging' % directory # the place you want to store your caffemodel
+    d_caffemodel = '%s/caffemodel/manifold_merging2' % directory # the place you want to store your caffemodel
 
     # num_parts and np_in_lmdb are two parameters that are used inside the framework to move from one
     # dataset definition to another. Num_parts is the number of parts we want to have, while

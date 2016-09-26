@@ -208,10 +208,10 @@ def runCaffeOnModel(data, model_dir, def_file, idx, masks):
         resizedImage = np.subtract(resizedImage, 0.5)
 
         # TODO: check that everything works fine here
-        img4ch = np.concatenate((resizedImage, center, metadata), axis=2)
-        img4ch = np.transpose(img4ch, (2, 0, 1))
+        img5ch = np.concatenate((resizedImage, center, metadata), axis=2)
+        img5ch = np.transpose(img5ch, (2, 0, 1))
         
-        net.blobs['data'].data[...] = img4ch
+        net.blobs['data'].data[...] = img5ch
         net.forward()
     
         for l in range(len(layer_names)):

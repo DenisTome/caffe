@@ -10,5 +10,5 @@ gamma: 0.333
 display: 5
 max_iter: 172980
 snapshot: 100
-snapshot_prefix: "models/cpm_architecture/prototxt/caffemodel/manifold_merging/pose"
+snapshot_prefix: "models/cpm_architecture/prototxt/caffemodel/manifold_merging2/pose"
 solver_mode: GPU
