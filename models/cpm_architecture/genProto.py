@@ -60,11 +60,11 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             #    lr_m = 5
             #else:
             #    lr_m = 1
+            lr_m = 1e-3 # 1e-3 (best res so far)
             if ((stage == 1 and conv_counter == 7) or
                 (stage > 1 and state != 'image' and (conv_counter in [1, 5]))):
                 conv_name = '%s_new' % conv_name
-                # lr_m = 1 # 1e-3 (best res so far)
-            lr_m = 1e-3 # 1e-3 (best res so far)
+                lr_m = 1 # 1e-3 (best res so far)
             # additional for python layer
             if (stage > 1 and state != 'image' and (conv_counter == 1)):
                 conv_name = '%s_mf' % conv_name
@@ -206,7 +206,7 @@ if __name__ == "__main__":
                         snapshot=snapshot, gpu=True)
     ### END
 
-    d_caffemodel = '%s/caffemodel/manifold_merging' % directory # the place you want to store your caffemodel
+    d_caffemodel = '%s/caffemodel/manifold_merging_fromzero' % directory # the place you want to store your caffemodel
 
     # num_parts and np_in_lmdb are two parameters that are used inside the framework to move from one
     # dataset definition to another. Num_parts is the number of parts we want to have, while

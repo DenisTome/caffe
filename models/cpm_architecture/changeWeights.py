@@ -29,29 +29,63 @@ def saveNet(net, dir_name, file_name):
     net.save('%s/%s.caffemodel' % (final_path, file_name))
 
 def getNewLayers(nstages = 6):
-    layers_old = [""]* (nstages-2)
-    layers_new = [""]* (nstages-2)
-    for s in range(0,nstages-2):
+    layers_old = [""]* (nstages-1)
+    layers_new = [""]* (nstages-1)
+    for s in range(0,nstages-1):
         layers_old[s] = 'Mconv1_stage%d_new' % (s+2)
         layers_new[s] = 'Mconv1_stage%d_new_mf' % (s+2)
     return (layers_old, layers_new)
 
-heatmaps_ch_size = 18
+def isLayerToAnalyse(layer_name, changed_layers):
+    if ('image' in layer_name):
+        return False
+    if ('pool' in layer_name):
+        return False
+    if ('relu' in layer_name):
+        return False
+    if ('concat' in layer_name):
+        return False
+    if (layer_name in changed_layers):
+        return False
+    return True
+    
 caffe.set_mode_cpu()
 (layer_names_old, layer_names_new) = getNewLayers()
 
+# LOAD MODELS
 net1 = loadNet('trial_5', 50000)
 net2 = loadNet('trial_5', 50000, 'pose_deploy_manifold')
 
+# DEFINE NEW WEIGHTS
+heatmaps_ch_size = 18
 for layer in zip(layer_names_old,layer_names_new):
     # read weights
     weights = net1.params[layer[0]][0].data
     # define new weights
-    init_weights = weights[:,32:32+heatmaps_ch_size]/2
-    weights[:,32:32+heatmaps_ch_size] = init_weights
-    new_weights = np.concatenate((weights,init_weights),axis=1)
+#    init_weights = weights[:,32:32+heatmaps_ch_size]/2
+    init_weights = weights[:,32:32+heatmaps_ch_size]
+#    weights[:,32:32+heatmaps_ch_size] = init_weights
+#    new_weights = np.concatenate((weights,init_weights),axis=1)
+    new_weights = np.concatenate((weights,np.zeros(init_weights.shape)),axis=1)
     net2.params[layer[1]][0].data[...] = new_weights
     net2.params[layer[1]][1].data[...] = net1.params[layer[0]][1].data
 
-saveNet(net2, 'manifold_initialised', 'initialisation')
+#CHECK THAT THE OTHER LAYERS HAVE THE CORRECT WEIGHTS
+print '\n\nAnalazing model weights: comparison'
+all_layer_names = list(net1._layer_names)
+for layer_name in all_layer_names:
+    if not isLayerToAnalyse(layer_name, layer_names_old):
+        continue
+    weights_net1 = net1.params[layer_name][0].data
+    weights_net2 = net2.params[layer_name][0].data
+    biases_net1 = net1.params[layer_name][1].data
+    biases_net2 = net2.params[layer_name][1].data
+    same_w = np.array_equal(weights_net1, weights_net2)
+    same_b = np.array_equal(biases_net1, biases_net2)
+    if not(same_w and same_b):
+        print 'Layer %s has unmatching weights; weights %r, bias %r' % (layer_name, same_w, same_b)
+print 'Analysis complete'
+
+saveNet(net2, 'manifold_initialised', 'initialisation_zero')
+
 

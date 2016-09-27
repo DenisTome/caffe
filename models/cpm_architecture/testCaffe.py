@@ -46,17 +46,21 @@ def load_configuration(gpu = True):
     NN['offset'] = 25
     NN['inputSize'] = 368
     NN['outputSize'] = 46
+    NN['njoints'] = 17
     NN['sigma'] = 7
     NN['sigma_center'] = 21
     NN['stride'] = 8
     NN['GPU'] = gpu
     return NN
 
-def loadNet(dir_name, iter_num):
+def loadNet(dir_name, file_detail):
     # defining model
     caffe_home = os.environ['CAFFE_HOME_CPM']
     def_file = '%s/models/cpm_architecture/prototxt/caffemodel/%s/pose_deploy.prototxt' % (caffe_home, dir_name)
-    model_file = '%s/models/cpm_architecture/prototxt/caffemodel/%s/pose_iter_%d.caffemodel' % (caffe_home, dir_name, iter_num)
+    if isinstance(file_detail, basestring):
+        model_file = '%s/models/cpm_architecture/prototxt/caffemodel/%s/%s.caffemodel' % (caffe_home, dir_name, file_detail)
+    else:
+        model_file = '%s/models/cpm_architecture/prototxt/caffemodel/%s/pose_iter_%d.caffemodel' % (caffe_home, dir_name, file_detail)
     net = caffe.Net(def_file, model_file, caffe.TEST)
     return net
     
@@ -160,7 +164,10 @@ def preprocess_image(NN, curr_data):
     
     return (resizedImage, joints, center)
     
-def caffe_data(NN, img, center, data):
+def caffe_data(NN, net, img, center, data):
+    NN['inputSize'] = net.blobs['data'].width
+    num_channels = net.blobs['data'].channels
+
     # generate center heat-map
     center_hm = np.zeros((NN['inputSize'],NN['inputSize'],1))
     center_hm[:,:,0] = generateGaussian(NN, center, center_map=True)
@@ -175,11 +182,17 @@ def caffe_data(NN, img, center, data):
     
     input_img = np.divide(img, float(256))
     input_img = np.subtract(input_img, 0.5)
-    img5ch = np.concatenate((input_img, center_hm, metadata_channel), axis=2)
-    img5ch = np.transpose(img5ch, (2, 0, 1))
     
-    # Give input
-    net.blobs['data'].data[...] = img5ch
+    if num_channels == 4:
+        img4ch = np.concatenate((input_img, center_hm), axis=2)
+        img4ch = np.transpose(img4ch, (2, 0, 1))
+        # Give input
+        net.blobs['data'].data[...] = img4ch    
+    else:
+        img5ch = np.concatenate((input_img, center_hm, metadata_channel), axis=2)
+        img5ch = np.transpose(img5ch, (2, 0, 1))
+        # Give input
+        net.blobs['data'].data[...] = img5ch
     net.forward()
 
 # Load data and configuration
@@ -195,15 +208,28 @@ else:
     caffe.set_mode_cpu()
 
 # Load caffe model
-net = loadNet('manifold_merging', 16000)
-caffe_data(NN, NN_img, center, data)
+net = loadNet('manifold_initialised', 'initialisation_zero')
+net2 = loadNet('trial_5', 50000)
+caffe_data(NN, net, NN_img, center, data)
+caffe_data(NN, net2, NN_img, center, data)
 
 # Get outputs
 layer_names = ['conv7_stage1_new', 'Mconv5_stage2_new', 'Mconv5_stage3_new',
                'Mconv5_stage4_new', 'Mconv5_stage5_new', 'Mconv5_stage6_new']
 
-labels = net.blobs.get(layer_names[-1]).data
+labels = net.blobs.get(layer_names[0]).data
 labels = np.reshape(labels,(18,NN['outputSize'],NN['outputSize']))
 labels = np.transpose(labels, (1, 2, 0))
+labels2 = net2.blobs.get(layer_names[-1]).data
+labels2 = np.reshape(labels2,(18,NN['outputSize'],NN['outputSize']))
+labels2 = np.transpose(labels2, (1, 2, 0))
+    
+plt.figure()
+for h in range(NN['njoints'] + 1):
+    plt.subplot(121), plt.title('old model')
+    plt.imshow(labels2[:,:,h])
+    plt.subplot(122), plt.title('new model')
+    plt.imshow(labels[:,:,h])
+    plt.draw()
+    plt.waitforbuttonpress()
 
-plt.imshow(labels[:,:,0])
