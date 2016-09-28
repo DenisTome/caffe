@@ -1,0 +1,7 @@
+Manifold layer is taking as input the gt and is forwarding it to the output.
+Deploy file not there because there's no labels at test time.
+
+Started from the model that has been initialised from model 50k where the weights multiplied by the manifold output are set to zero.
+
+IMPORTANT: the architecture uses also relu layer for the last lasyers at each stage. DIFFERENT from what was done originally in the 50K model.
+	   if I want to use this, change architecture.

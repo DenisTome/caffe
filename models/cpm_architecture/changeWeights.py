@@ -9,15 +9,18 @@ import os
 import caffe
 import numpy as np
 
-def loadNet(dir_name, iter_num, def_file_name = False):
+def loadNet(dir_name, file_detail, def_file_name = False):
     # defining model
     caffe_home = os.environ['CAFFE_HOME_CPM']
     if not def_file_name:
         def_file = '%s/models/cpm_architecture/prototxt/caffemodel/%s/pose_deploy.prototxt' % (caffe_home, dir_name)
     else:
         def_file = '%s/models/cpm_architecture/prototxt/caffemodel/%s/%s.prototxt' % (caffe_home, dir_name, def_file_name)
-       
-    model_file = '%s/models/cpm_architecture/prototxt/caffemodel/%s/pose_iter_%d.caffemodel' % (caffe_home, dir_name, iter_num)
+    
+    if isinstance(file_detail, basestring):
+        model_file = '%s/models/cpm_architecture/prototxt/caffemodel/%s/%s.caffemodel' % (caffe_home, dir_name, file_detail)
+    else:
+        model_file = '%s/models/cpm_architecture/prototxt/caffemodel/%s/pose_iter_%d.caffemodel' % (caffe_home, dir_name, file_detail)
     net = caffe.Net(def_file, model_file, caffe.TEST)
     return net
 
@@ -62,11 +65,15 @@ for layer in zip(layer_names_old,layer_names_new):
     # read weights
     weights = net1.params[layer[0]][0].data
     # define new weights
+    # 32 -> num channels of the first element concatenated
 #    init_weights = weights[:,32:32+heatmaps_ch_size]/2
-    init_weights = weights[:,32:32+heatmaps_ch_size]
+#    init_weights = weights[:,32:32+heatmaps_ch_size]
 #    weights[:,32:32+heatmaps_ch_size] = init_weights
 #    new_weights = np.concatenate((weights,init_weights),axis=1)
-    new_weights = np.concatenate((weights,np.zeros(init_weights.shape)),axis=1)
+    new_weights = np.concatenate((weights,np.zeros((weights.shape[0],
+                                                   heatmaps_ch_size, 
+                                                   weights.shape[2], 
+                                                   weights.shape[3]))),axis=1)
     net2.params[layer[1]][0].data[...] = new_weights
     net2.params[layer[1]][1].data[...] = net1.params[layer[0]][1].data
 
@@ -87,5 +94,10 @@ for layer_name in all_layer_names:
 print 'Analysis complete'
 
 saveNet(net2, 'manifold_initialised', 'initialisation_zero')
-
-
+#(_,names) = getNewLayers()
+#net1 = loadNet('manifold_initialised', 'initialisation_zero')
+#net2 = loadNet('manifold_merging_fromzero2', 600)
+#weights1 = net1.params[names[0]][0].data
+#weights2 = net2.params[names[0]][0].data
+#np.abs(weights2[0,32:51]).mean()
+#np.abs(weights2[0,51:]).mean()

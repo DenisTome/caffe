@@ -258,11 +258,11 @@ layer {
   bottom: "conv6_stage1"
   top: "conv7_stage1_new"
   param {
-    lr_mult: 1
+    lr_mult: 0.001
     decay_mult: 1
   }
   param {
-    lr_mult: 2
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -277,6 +277,12 @@ layer {
       type: "constant"
     }
   }
+}
+layer {
+  name: "relu7_stage1"
+  type: "ReLU"
+  bottom: "conv7_stage1_new"
+  top: "conv7_stage1_new"
 }
 layer {
   name: "manifolds_stage1"
@@ -469,11 +475,11 @@ layer {
   bottom: "concat_stage2"
   top: "Mconv1_stage2_new_mf"
   param {
-    lr_mult: 1
+    lr_mult: 0.001
     decay_mult: 1
   }
   param {
-    lr_mult: 2
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -597,11 +603,11 @@ layer {
   bottom: "Mconv4_stage2"
   top: "Mconv5_stage2_new"
   param {
-    lr_mult: 1
+    lr_mult: 0.001
     decay_mult: 1
   }
   param {
-    lr_mult: 2
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -616,6 +622,12 @@ layer {
       type: "constant"
     }
   }
+}
+layer {
+  name: "Mrelu5_stage2"
+  type: "ReLU"
+  bottom: "Mconv5_stage2_new"
+  top: "Mconv5_stage2_new"
 }
 layer {
   name: "manifolds_stage2"
@@ -679,11 +691,11 @@ layer {
   bottom: "concat_stage3"
   top: "Mconv1_stage3_new_mf"
   param {
-    lr_mult: 1
+    lr_mult: 0.001
     decay_mult: 1
   }
   param {
-    lr_mult: 2
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -807,11 +819,11 @@ layer {
   bottom: "Mconv4_stage3"
   top: "Mconv5_stage3_new"
   param {
-    lr_mult: 1
+    lr_mult: 0.001
     decay_mult: 1
   }
   param {
-    lr_mult: 2
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -826,6 +838,12 @@ layer {
       type: "constant"
     }
   }
+}
+layer {
+  name: "Mrelu5_stage3"
+  type: "ReLU"
+  bottom: "Mconv5_stage3_new"
+  top: "Mconv5_stage3_new"
 }
 layer {
   name: "manifolds_stage3"
@@ -889,11 +907,11 @@ layer {
   bottom: "concat_stage4"
   top: "Mconv1_stage4_new_mf"
   param {
-    lr_mult: 1
+    lr_mult: 0.001
     decay_mult: 1
   }
   param {
-    lr_mult: 2
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -1017,11 +1035,11 @@ layer {
   bottom: "Mconv4_stage4"
   top: "Mconv5_stage4_new"
   param {
-    lr_mult: 1
+    lr_mult: 0.001
     decay_mult: 1
   }
   param {
-    lr_mult: 2
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -1036,6 +1054,12 @@ layer {
       type: "constant"
     }
   }
+}
+layer {
+  name: "Mrelu5_stage4"
+  type: "ReLU"
+  bottom: "Mconv5_stage4_new"
+  top: "Mconv5_stage4_new"
 }
 layer {
   name: "manifolds_stage4"
@@ -1099,11 +1123,11 @@ layer {
   bottom: "concat_stage5"
   top: "Mconv1_stage5_new_mf"
   param {
-    lr_mult: 1
+    lr_mult: 0.001
     decay_mult: 1
   }
   param {
-    lr_mult: 2
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -1227,11 +1251,11 @@ layer {
   bottom: "Mconv4_stage5"
   top: "Mconv5_stage5_new"
   param {
-    lr_mult: 1
+    lr_mult: 0.001
     decay_mult: 1
   }
   param {
-    lr_mult: 2
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -1246,6 +1270,12 @@ layer {
       type: "constant"
     }
   }
+}
+layer {
+  name: "Mrelu5_stage5"
+  type: "ReLU"
+  bottom: "Mconv5_stage5_new"
+  top: "Mconv5_stage5_new"
 }
 layer {
   name: "manifolds_stage5"
@@ -1309,11 +1339,11 @@ layer {
   bottom: "concat_stage6"
   top: "Mconv1_stage6_new_mf"
   param {
-    lr_mult: 1
+    lr_mult: 0.001
     decay_mult: 1
   }
   param {
-    lr_mult: 2
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -1437,11 +1467,11 @@ layer {
   bottom: "Mconv4_stage6"
   top: "Mconv5_stage6_new"
   param {
-    lr_mult: 1
+    lr_mult: 0.001
     decay_mult: 1
   }
   param {
-    lr_mult: 2
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {

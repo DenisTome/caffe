@@ -64,10 +64,11 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             if ((stage == 1 and conv_counter == 7) or
                 (stage > 1 and state != 'image' and (conv_counter in [1, 5]))):
                 conv_name = '%s_new' % conv_name
-                lr_m = 1 # 1e-3 (best res so far)
+                
             # additional for python layer
             if (stage > 1 and state != 'image' and (conv_counter == 1)):
                 conv_name = '%s_mf' % conv_name
+#                lr_m = 1
 #                lr_m = 1e-2#1
             n.tops[conv_name] = L.Convolution(n.tops[last_layer], kernel_size=kernel[l],
                                                   num_output=outCH[l], pad=int(math.floor(kernel[l]/2)),
@@ -75,7 +76,7 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
                                                   weight_filler=dict(type='gaussian', std=0.01),
                                                   bias_filler=dict(type='constant'))
             last_layer = conv_name
-            if not(layername[l+1] == 'L' or layername[l+1] == 'M'):
+            if not(layername[l+1] == 'L'):# or layername[l+1] == 'M'):
                 if(state == 'image'):
                     ReLUname = 'relu%d_stage%d' % (conv_counter, stage)
                     n.tops[ReLUname] = L.ReLU(n.tops[last_layer], in_place=True)
@@ -93,6 +94,7 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             debug_mode = 0
             parameters = '{"njoints": 17,"sigma": 1, "debug_mode": %r, "max_area": 100, "percentage_max": 3, "train": %u, "Lambda": %.3f }' % (debug_mode, not deploy, 0.05)
             n.tops[last_manifold] = L.Python(n.tops[last_layer],n.tops[label_name[2]],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str=parameters))#,loss_weight=1)
+#            n.tops[last_manifold] = L.Python(n.tops[label_name[1]],n.tops[label_name[2]],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str=parameters))#,loss_weight=1)
         elif layername[l] == 'L':
             # Loss: n.loss layer is only in training and testing nets, but not in deploy net.
             if deploy == False:
@@ -143,6 +145,11 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
 
 
 def writePrototxts(dataFolder, dir, batch_size, layername, kernel, stride, outCH, transform_param_in, folder_name, label_name, solver_param):
+    with open('%s/pose_solver.prototxt' % dir, "w") as f:
+        solver_string = getSolverPrototxt(path_in_caffe, folder_name, dir, solver_param)
+        print 'writing %s/pose_solver.prototxt' % dir
+        f.write('%s' % solver_string)
+        
     # write the net prototxt files out
     with open('%s/pose_train_test.prototxt' % dir, 'w') as f:
         print 'writing %s/pose_train_test.prototxt' % dir
@@ -154,10 +161,7 @@ def writePrototxts(dataFolder, dir, batch_size, layername, kernel, stride, outCH
         str_to_write = str(setLayers('', 0, layername, kernel, stride, outCH, label_name, transform_param_in, deploy=True))
         f.write(str_to_write)
 
-    with open('%s/pose_solver.prototxt' % dir, "w") as f:
-        solver_string = getSolverPrototxt(path_in_caffe, folder_name, dir, solver_param)
-        print 'writing %s/pose_solver.prototxt' % dir
-        f.write('%s' % solver_string)
+
 
 
 def getSolverPrototxt(path_in_caffe, folder_name, dir, solver_param):
@@ -197,7 +201,7 @@ if __name__ == "__main__":
     directory = 'prototxt'
     dataFolder = '%s/lmdb/train' % (path_in_caffe)
     batch_size = 8
-    snapshot=200 #5000
+    snapshot = 200 #5000
     # base_lr = 1e-5 (8e-5)
     base_lr = 1e-4 #8e-5
     solver_param = dict(stepsize=50000, batch_size=batch_size, num_epochs=12, base_lr = base_lr,
@@ -206,7 +210,7 @@ if __name__ == "__main__":
                         snapshot=snapshot, gpu=True)
     ### END
 
-    d_caffemodel = '%s/caffemodel/manifold_merging_fromzero' % directory # the place you want to store your caffemodel
+    d_caffemodel = '%s/caffemodel/manifold_merging_from_gt' % directory # the place you want to store your caffemodel
 
     # num_parts and np_in_lmdb are two parameters that are used inside the framework to move from one
     # dataset definition to another. Num_parts is the number of parts we want to have, while

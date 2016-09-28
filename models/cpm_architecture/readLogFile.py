@@ -220,9 +220,8 @@ def plotData(train, val, nstages, main_title, avg_line = False, avg_batch_size =
 def main():
     #filename = ['prototxt/caffemodel/trial_5/log.txt']
     #filename = ['prototxt/caffemodel/trial_3/log.txt','prototxt/log.txt']
-    #filename = ['prototxt/log1.txt','prototxt/log.txt']
-    filename = ['prototxt/log_merging_zero.txt']
-#    filename = ['prototxt/caffemodel/manifold_merging_init/log_merging_init.txt']
+    filename = ['prototxt/log_merging_from_gt.txt']
+#    filename = ['prototxt/caffemodel/manifold_merging_gt_input/log_merging_gt_test.txt']
     #val_filename = ['prototxt/caffemodel/trial_5/validation.json']
     val_filename = []
     stn_lrm = 1e-4

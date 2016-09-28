@@ -68,6 +68,7 @@ class MyCustomLayer(caffe.Layer):
         # Adjust the shapes of top blobs and internal buffers to accommodate the shapes of the bottom blobs.
         # Bottom has the same shape of input
         top[0].reshape(*bottom[0].data.shape)
+        self.diff = np.zeros_like(bottom[0].data, dtype=np.float32)
     
     def findCoordinate(self, heatMap):
         """Given a heat-map of a squared dimension, identify the joint position as the 
@@ -106,7 +107,7 @@ class MyCustomLayer(caffe.Layer):
         for i in range(self.num_joints):
             heatMaps[i,:,:] = self.generateGaussian(pos, points[:,i], Sigma)
         # generating last heat maps which contains all joint positions
-        heatMaps[-1,:,:] =  heatMaps[0:heatMaps.shape[0]-1,:,:].max(axis=0)
+        heatMaps[-1,:,:] = np.maximum(1.0-heatMaps[0:heatMaps.shape[0]-1,:,:].max(axis=0), 0)
         return heatMaps
     
     def findMeanCovariance(self, heatMap):
@@ -256,11 +257,14 @@ class MyCustomLayer(caffe.Layer):
                         plt.imsave(name,vis)
         
         top[0].data[...] = heatMaps
+        self.diff[...] = input_heatMaps - heatMaps
+#        top[0].data[...] = input_heatMaps
         #pass
     
     def backward(self, top, propagate_down, bottom):
         """Backward data in the learning phase. This layer does not propagate back information."""
-        #bottom[0].diff[...] = np.zeros(bottom[0].data.shape)
-        pass
+#        bottom[0].diff[...] = np.zeros(bottom[0].data.shape)
+        bottom[0].diff[...] = self.diff
+        #pass
         
         

@@ -15,10 +15,15 @@
 # -weights models/cpm_architecture/prototxt/caffemodel/manifold_merging_init/pose_iter_5800.caffemodel \
 # -gpu 0 2>&1 | tee models/cpm_architecture/prototxt/log_merging.txt
 
+# GLOG_logtostderr=1 build/tools/caffe train \
+# -solver models/cpm_architecture/prototxt/pose_solver.prototxt \
+# -weights models/cpm_architecture/prototxt/caffemodel/manifold_initialised/initialisation_zero.caffemodel \
+# -gpu 0 2>&1 | tee models/cpm_architecture/prototxt/log_merging_zero2.txt
+
 GLOG_logtostderr=1 build/tools/caffe train \
 -solver models/cpm_architecture/prototxt/pose_solver.prototxt \
--weights models/cpm_architecture/prototxt/caffemodel/manifold_initialised/initialisation_zero.caffemodel \
--gpu 0 2>&1 | tee models/cpm_architecture/prototxt/log_merging_zero.txt
+-weights models/cpm_architecture/prototxt/caffemodel/manifold_merging_gt_input/pose_iter_800.caffemodel \
+-gpu 0 2>&1 | tee models/cpm_architecture/prototxt/log_merging_from_gt.txt
 
 # GLOG_logtostderr=1 build/tools/caffe train \
 # -solver models/cpm_architecture/prototxt/pose_solver.prototxt \

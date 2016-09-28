@@ -196,7 +196,6 @@ def runCaffeOnModel(data, model_dir, def_file, idx, masks):
             plt.waitforbuttonpress()
         
         labels, center = generateHeatMaps(center, joints)
-        # TODO: check that annolist_index is loaded correctly
         metadata = generateChannel(data['annolist_index'], masks)
         
         if (verbose):
@@ -207,7 +206,6 @@ def runCaffeOnModel(data, model_dir, def_file, idx, masks):
         resizedImage = np.divide(resizedImage,float(256))
         resizedImage = np.subtract(resizedImage, 0.5)
 
-        # TODO: check that everything works fine here
         img5ch = np.concatenate((resizedImage, center, metadata), axis=2)
         img5ch = np.transpose(img5ch, (2, 0, 1))
         
