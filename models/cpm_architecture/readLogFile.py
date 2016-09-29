@@ -30,6 +30,8 @@ def parse_log(path_to_log, val_filename = []):
     with open(path_to_log) as f:
         
         for line in f:
+            if ('metadata =' in line):
+                continue
             if base_lr == -1:
                 base_lr_match = regex_base_lr.search(line)
                 if base_lr_match:
@@ -219,9 +221,7 @@ def plotData(train, val, nstages, main_title, avg_line = False, avg_batch_size =
 
 def main():
     #filename = ['prototxt/caffemodel/trial_5/log.txt']
-    #filename = ['prototxt/caffemodel/trial_3/log.txt','prototxt/log.txt']
-    filename = ['prototxt/log_merging_from_gt.txt']
-#    filename = ['prototxt/caffemodel/manifold_merging_gt_input/log_merging_gt_test.txt']
+    filename = ['prototxt/log.txt']
     #val_filename = ['prototxt/caffemodel/trial_5/validation.json']
     val_filename = []
     stn_lrm = 1e-4

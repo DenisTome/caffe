@@ -255,7 +255,7 @@ def caffe_data(NN, net, img, center, data):
 
 # Load data and configuration
 NN = load_configuration(gpu = False)
-data = load_frame_data3()
+#data = load_frame_data3()
 #
 ## take caffe input data
 (NN_img, joints, center) = preprocess_image(NN, data)
@@ -265,7 +265,8 @@ if NN['GPU']:
 else:
     caffe.set_mode_cpu()
 
-# Load caffe model
+
+ Load caffe model
 net = loadNet('manifold_initialised', 'initialisation_zero')
 net2 = loadNet('trial_5', 50000)
 caffe_data(NN, net, NN_img, center, data)
@@ -277,60 +278,51 @@ layer_names = ['conv7_stage1_new', 'Mconv5_stage2_new', 'Mconv5_stage3_new',
 manifold_names = ['manifolds_stage1','manifolds_stage2','manifolds_stage3',
                   'manifolds_stage4','manifolds_stage5']
 
-idx = 3
-labels = net.blobs.get(layer_names[idx]).data
-labels = np.reshape(labels,(18,NN['outputSize'],NN['outputSize']))
-labels = np.transpose(labels, (1, 2, 0))
-labels2 = net2.blobs.get(layer_names[idx]).data
-labels2 = np.reshape(labels2,(18,NN['outputSize'],NN['outputSize']))
-labels2 = np.transpose(labels2, (1, 2, 0))
-manifold = net.blobs.get(manifold_names[idx]).data
+#idx = 2
+#labels = net.blobs.get(layer_names[idx]).data
+#labels = np.reshape(labels,(18,NN['outputSize'],NN['outputSize']))
+#labels = np.transpose(labels, (1, 2, 0))
+#labels2 = net2.blobs.get(layer_names[idx]).data
+#labels2 = np.reshape(labels2,(18,NN['outputSize'],NN['outputSize']))
+#labels2 = np.transpose(labels2, (1, 2, 0))
+#manifold = net.blobs.get(manifold_names[idx]).data
     
-c_dir = os.getcwd()
-if not os.path.exists("tmp"):
-    os.mkdir('tmp')
-fig = plt.figure()
-for h in range(NN['njoints'] + 1):
-    plt.subplot(141), plt.title('img')
-    plt.imshow(NN_img)
-    plt.subplot(142), plt.title('old model')
-    plt.imshow(labels2[:,:,h])
-    plt.subplot(143), plt.title('new model')
-    plt.imshow(labels[:,:,h])
-    plt.subplot(144), plt.title('manifold')
-    plt.imshow(manifold[0,h])
-    plt.draw()
-#    plt.waitforbuttonpress()
-    plt.savefig('tmp/h%02d.png' % h)
-
-os.chdir('tmp')
-subprocess.call([
-    'ffmpeg', '-framerate', '1', '-i', 'h%02d.png', '-r', '30', '-pix_fmt', 'yuv420p',
-    'sample2.mp4'
-])
-for file_name in glob.glob("*.png"):
-    os.remove(file_name)
-os.chdir(c_dir)
+#c_dir = os.getcwd()
+#if not os.path.exists("tmp"):
+#    os.mkdir('tmp')
+#fig = plt.figure()
+#for h in range(NN['njoints'] + 1):
+#    plt.subplot(141), plt.title('img')
+#    plt.imshow(NN_img)
+#    plt.subplot(142), plt.title('old model')
+#    plt.imshow(labels2[:,:,h])
+#    plt.subplot(143), plt.title('new model')
+#    plt.imshow(labels[:,:,h])
+#    plt.subplot(144), plt.title('manifold')
+#    plt.imshow(manifold[0,h])
+#    plt.draw()
+##    plt.waitforbuttonpress()
+#    plt.savefig('tmp/h%02d.png' % h)
+#
+#os.chdir('tmp')
+#subprocess.call([
+#    'ffmpeg', '-framerate', '1', '-i', 'h%02d.png', '-r', '30', '-pix_fmt', 'yuv420p',
+#    'sample2.mp4'
+#])
+#for file_name in glob.glob("*.png"):
+#    os.remove(file_name)
+#os.chdir(c_dir)
 
     
 
-layer_names_new = list(net._layer_names)
-layer_names_old = list(net2._layer_names)
-
-idx_new = 36
-idx_old = 33
-output_layer_net     = net.blobs.get(layer_names_new[idx_new]).data
-output_layer_net_old = net2.blobs.get(layer_names_old[idx_old]).data
-print 'The same: %r' % np.array_equal(output_layer_net, output_layer_net_old)
-plt.subplot(121), plt.imshow(output_layer_net_old[0][0])
-plt.subplot(122),plt.imshow(output_layer_net_old[0][0])
+#layer_names_new = list(net._layer_names)
+#layer_names_old = list(net2._layer_names)
 #
-#idx = 110
-#np.abs(np.subtract(output_layer_net[0,idx],output_layer_net_old[0,idx])).sum()
-#
-#tmp = output_layer_net[0][1]
-#tmp1 = output_layer_net_old[0][1]
-#np.array_equal(tmp,tmp1)
+#idx_new = 36
+#idx_old = 33
+#output_layer_net     = net.blobs.get(layer_names_new[idx_new]).data
+#output_layer_net_old = net2.blobs.get(layer_names_old[idx_old]).data
+#print 'The same: %r' % np.array_equal(output_layer_net, output_layer_net_old)
+#plt.subplot(121), plt.imshow(output_layer_net_old[0][0])
+#plt.subplot(122),plt.imshow(output_layer_net_old[0][0])
 
-#img = plt.imread(data[1050450]['img_paths'])
-#plt.imshow(img)

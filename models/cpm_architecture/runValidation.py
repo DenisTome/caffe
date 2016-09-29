@@ -16,7 +16,7 @@ import scipy.io as sio
 import matplotlib.pyplot as plt
 
 # general settings
-samplingRate = 150
+samplingRate = 450 #150
 offset = 25
 inputSizeNN = 368
 outputSizeNN = 46
@@ -26,8 +26,10 @@ sigma_center = 21
 stride = 8
 verbose = False
 fn_notification = 25
-iter_start_from = 45000
+iter_start_from = 0 #45000
 device_id = 0
+#folder_name = 'manifold_merging_gt_frominit/to_validate'
+folder_name = 'trial_5/to_validate'
 
 def filterJoints(joints_orig):
     joints = [0] * len(joints_idx)
@@ -99,8 +101,7 @@ def generateHeatMaps(center, joints):
     for i in range(num_joints):
         heatMaps[:,:,i] = generateGaussian(pos, joints[i], Sigma)
     # generating last heat maps which contains all joint positions
-    joints_heatmaps = heatMaps[:,:,0:heatMaps.shape[2]-1]
-    heatMaps[:,:,-1] = joints_heatmaps.max(axis=2)
+    heatMaps[:,:,-1] = np.maximum(1.0 - heatMaps[:,:,0:heatMaps.shape[2]-1].max(axis=2), 0)
     
     # heatmap to be added to the RGB image
     sigma_sq = np.power(sigma_center,2)
@@ -123,10 +124,10 @@ def generateChannel(frame_number, masks):
     person = masks['mask_person'][0,frame_number-1]
     
     metadata = np.zeros((inputSizeNN,inputSizeNN))
-    metadata[0,0,0] = frame_number
-    metadata[0,1,0] = camera
-    metadata[0,2,0] = action
-    metadata[0,3,0] = person
+    metadata[0,0] = frame_number
+    metadata[0,1] = camera
+    metadata[0,2] = action
+    metadata[0,3] = person
     
     metadata = metadata[:,:,np.newaxis]
     return metadata
@@ -196,7 +197,7 @@ def runCaffeOnModel(data, model_dir, def_file, idx, masks):
             plt.waitforbuttonpress()
         
         labels, center = generateHeatMaps(center, joints)
-        metadata = generateChannel(data['annolist_index'], masks)
+        metadata = generateChannel(curr_data['annolist_index'], masks)
         
         if (verbose):
             for j in range(len(joints) + 1):
@@ -206,10 +207,18 @@ def runCaffeOnModel(data, model_dir, def_file, idx, masks):
         resizedImage = np.divide(resizedImage,float(256))
         resizedImage = np.subtract(resizedImage, 0.5)
 
-        img5ch = np.concatenate((resizedImage, center, metadata), axis=2)
-        img5ch = np.transpose(img5ch, (2, 0, 1))
-        
-        net.blobs['data'].data[...] = img5ch
+        num_channels = net.blobs['data'].channels
+        if num_channels == 4:
+            img4ch = np.concatenate((resizedImage, center), axis=2)
+            img4ch = np.transpose(img4ch, (2, 0, 1))
+            # Give input
+            net.blobs['data'].data[...] = img4ch    
+        else:
+            img5ch = np.concatenate((resizedImage, center, metadata), axis=2)
+            img5ch = np.transpose(img5ch, (2, 0, 1))
+            # Give input
+            net.blobs['data'].data[...] = img5ch
+
         net.forward()
     
         for l in range(len(layer_names)):
@@ -230,8 +239,8 @@ def runCaffeOnModel(data, model_dir, def_file, idx, masks):
                 if (l == (len(layer_names)-1)):
                     x,y = findPoint(curr_heatMap)
                     err += np.sqrt(np.power(joints[j][0]-x,2)+np.power(joints[j][1]-y,2))
-                plt.imshow(curr_heatMap)
-                plt.waitforbuttonpress()
+#                plt.imshow(curr_heatMap)
+#                plt.waitforbuttonpress()
             loss_stage[l] += loss
         mpepj_model.append(float(err)/(num_channels-1))
     
@@ -245,7 +254,6 @@ def runCaffeOnModel(data, model_dir, def_file, idx, masks):
         val['mpepj'].append(mpepj_value)
         val['stage'].append(l+1)
         
-    # TODO: check why result from Matlab is different from this one (close to 1 vs 0.02)
     return val
     
 def combine_data(val, new_val):
@@ -263,7 +271,8 @@ def getIter(item):
     return int(iter_match.group(1))
 
 def getLossOnValidationSet(json_file, models, mask_file):
-    prototxt = models + 'pose_deploy.prototxt'
+    output_file = models + '/validation.json'
+    prototxt = models + '/pose_deploy.prototxt'
     files = [f for f in os.listdir(models) if f.endswith('.caffemodel')]
     files = sorted(files, key=getIter)
     val = dict([('iteration',[]), ('loss_iter',[]), ('loss_stage',[]), ('mpepj',[]), ('stage',[])])
@@ -289,22 +298,21 @@ def getLossOnValidationSet(json_file, models, mask_file):
             continue
         new_val = runCaffeOnModel(data, model_dir, prototxt, idx, masks)
         val = combine_data(val, new_val)
+        # save json
+        with open(output_file, 'w+') as out:
+            json.dump(val, out)
     return val
 
-def main():
-    caffe.set_mode_gpu()
-    caffe.set_device(device_id)
-    
-    caffe_dir = os.environ.get('CAFFE_HOME_CPM')
-    json_file = '%s/models/cpm_architecture/jsonDatasets/H36M_annotations.json' % caffe_dir
-    caffe_models_dir = '%s/models/cpm_architecture/prototxt/caffemodel/trial_5/' % caffe_dir
-    mask_file = '%s/models/cpm_architecture/jsonDatasets/H36M_masks.mat' % caffe_dir
-    output_file = '%svalidation_tmp.json' % caffe_models_dir
-    
-    loss = getLossOnValidationSet(json_file, caffe_models_dir, mask_file)
-    
-    with open(output_file, 'w+') as out:
-        json.dump(loss, out)
+#def main():
+caffe.set_mode_gpu()
+caffe.set_device(device_id)
 
-if __name__ == '__main__':
-    main()
+caffe_dir = os.environ.get('CAFFE_HOME_CPM')
+json_file = '%s/models/cpm_architecture/jsonDatasets/H36M_annotations.json' % caffe_dir
+caffe_models_dir = '%s/models/cpm_architecture/prototxt/caffemodel/%s' % (caffe_dir, folder_name)
+mask_file = '%s/models/cpm_architecture/jsonDatasets/H36M_masks.mat' % caffe_dir
+
+loss = getLossOnValidationSet(json_file, caffe_models_dir, mask_file)
+
+#if __name__ == '__main__':
+#    main()

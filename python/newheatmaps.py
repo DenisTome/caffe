@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 # TODO: remove
 import cv2  
 from scipy.stats import multivariate_normal
+from scipy import ndimage
 import scipy.io as sio
 import sys
 import os
@@ -74,6 +75,7 @@ class MyCustomLayer(caffe.Layer):
         """Given a heat-map of a squared dimension, identify the joint position as the 
         point with the highest likelihood. If there is not such a point, it returns
         the center of the heat-map as predicted joint position."""
+        # heatMap = ndimage.gaussian_filter(heatMap, sigma=1)
         idx = np.where(heatMap == heatMap.max())
         x = idx[1][0]
         y = idx[0][0]
@@ -150,11 +152,10 @@ class MyCustomLayer(caffe.Layer):
         # heatmap (we are just estimating the covariance matrix which is independent
         # on the mean value, whatever it is).
         heatmap_area = heatMap[area[1]:area[3],area[0]:area[2]]
-        heatmap_area = np.divide(heatmap_area,np.sum(heatmap_area))
-#        heatmap_area = np.divide(heatmap_area,np.nansum(heatmap_area))
         
         # extract covariance matrix
         flatten_hm = heatmap_area.flatten()
+        flatten_hm /= flatten_hm.sum()
         x_coord = np.subtract(np.tile(range(area[0],area[2]), area[3]-area[1]),mean_value[0])
         y_coord = np.subtract(np.repeat(range(area[1],area[3]), area[2]-area[0]),mean_value[1])
         M = np.vstack((x_coord,y_coord))
@@ -228,6 +229,7 @@ class MyCustomLayer(caffe.Layer):
         camera = channel[0,0,1] - 1
         action = channel[0,0,2]
         person = channel[0,0,3]
+#        raise Exception("id:%r\ncamera:%r\naction:%r\nperson:%r" % (idx,camera,action,person))
         return (idx, camera, action, person)
         
     def forward(self, bottom, top):
@@ -257,6 +259,7 @@ class MyCustomLayer(caffe.Layer):
                         plt.imsave(name,vis)
         
         top[0].data[...] = heatMaps
+        # TODO: check if this is needed
         self.diff[...] = input_heatMaps - heatMaps
 #        top[0].data[...] = input_heatMaps
         #pass

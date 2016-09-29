@@ -56,8 +56,8 @@ caffe.set_mode_cpu()
 (layer_names_old, layer_names_new) = getNewLayers()
 
 # LOAD MODELS
-net1 = loadNet('trial_5', 50000)
-net2 = loadNet('trial_5', 50000, 'pose_deploy_manifold')
+net1 = loadNet('trial_5', 40000)
+net2 = loadNet('trial_5', 40000, 'pose_deploy_manifold')
 
 # DEFINE NEW WEIGHTS
 heatmaps_ch_size = 18

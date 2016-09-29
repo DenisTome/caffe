@@ -309,11 +309,11 @@ layer {
   bottom: "conv6_stage1"
   top: "conv7_stage1_new"
   param {
-    lr_mult: 0.001
+    lr_mult: 0.01
     decay_mult: 1
   }
   param {
-    lr_mult: 0.002
+    lr_mult: 0.02
     decay_mult: 0
   }
   convolution_param {
@@ -327,24 +327,6 @@ layer {
     bias_filler {
       type: "constant"
     }
-  }
-}
-layer {
-  name: "relu7_stage1"
-  type: "ReLU"
-  bottom: "conv7_stage1_new"
-  top: "conv7_stage1_new"
-}
-layer {
-  name: "manifolds_stage1"
-  type: "Python"
-  bottom: "conv7_stage1_new"
-  bottom: "metadata"
-  top: "manifolds_stage1"
-  python_param {
-    module: "newheatmaps"
-    layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1, \"Lambda\": 0.050 }"
   }
 }
 layer {
@@ -521,7 +503,7 @@ layer {
   bottom: "conv4_stage2"
   bottom: "conv7_stage1_new"
   bottom: "pool_center_lower"
-  bottom: "manifolds_stage1"
+  bottom: "label_lower"
   top: "concat_stage2"
   concat_param {
     axis: 1
@@ -533,11 +515,11 @@ layer {
   bottom: "concat_stage2"
   top: "Mconv1_stage2_new_mf"
   param {
-    lr_mult: 0.001
+    lr_mult: 1
     decay_mult: 1
   }
   param {
-    lr_mult: 0.002
+    lr_mult: 2
     decay_mult: 0
   }
   convolution_param {
@@ -661,11 +643,11 @@ layer {
   bottom: "Mconv4_stage2"
   top: "Mconv5_stage2_new"
   param {
-    lr_mult: 0.001
+    lr_mult: 0.01
     decay_mult: 1
   }
   param {
-    lr_mult: 0.002
+    lr_mult: 0.02
     decay_mult: 0
   }
   convolution_param {
@@ -679,24 +661,6 @@ layer {
     bias_filler {
       type: "constant"
     }
-  }
-}
-layer {
-  name: "Mrelu5_stage2"
-  type: "ReLU"
-  bottom: "Mconv5_stage2_new"
-  top: "Mconv5_stage2_new"
-}
-layer {
-  name: "manifolds_stage2"
-  type: "Python"
-  bottom: "Mconv5_stage2_new"
-  bottom: "metadata"
-  top: "manifolds_stage2"
-  python_param {
-    module: "newheatmaps"
-    layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1, \"Lambda\": 0.050 }"
   }
 }
 layer {
@@ -744,7 +708,7 @@ layer {
   bottom: "conv1_stage3"
   bottom: "Mconv5_stage2_new"
   bottom: "pool_center_lower"
-  bottom: "manifolds_stage2"
+  bottom: "label_lower"
   top: "concat_stage3"
   concat_param {
     axis: 1
@@ -756,11 +720,11 @@ layer {
   bottom: "concat_stage3"
   top: "Mconv1_stage3_new_mf"
   param {
-    lr_mult: 0.001
+    lr_mult: 1
     decay_mult: 1
   }
   param {
-    lr_mult: 0.002
+    lr_mult: 2
     decay_mult: 0
   }
   convolution_param {
@@ -884,11 +848,11 @@ layer {
   bottom: "Mconv4_stage3"
   top: "Mconv5_stage3_new"
   param {
-    lr_mult: 0.001
+    lr_mult: 0.01
     decay_mult: 1
   }
   param {
-    lr_mult: 0.002
+    lr_mult: 0.02
     decay_mult: 0
   }
   convolution_param {
@@ -902,24 +866,6 @@ layer {
     bias_filler {
       type: "constant"
     }
-  }
-}
-layer {
-  name: "Mrelu5_stage3"
-  type: "ReLU"
-  bottom: "Mconv5_stage3_new"
-  top: "Mconv5_stage3_new"
-}
-layer {
-  name: "manifolds_stage3"
-  type: "Python"
-  bottom: "Mconv5_stage3_new"
-  bottom: "metadata"
-  top: "manifolds_stage3"
-  python_param {
-    module: "newheatmaps"
-    layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1, \"Lambda\": 0.050 }"
   }
 }
 layer {
@@ -967,7 +913,7 @@ layer {
   bottom: "conv1_stage4"
   bottom: "Mconv5_stage3_new"
   bottom: "pool_center_lower"
-  bottom: "manifolds_stage3"
+  bottom: "label_lower"
   top: "concat_stage4"
   concat_param {
     axis: 1
@@ -979,11 +925,11 @@ layer {
   bottom: "concat_stage4"
   top: "Mconv1_stage4_new_mf"
   param {
-    lr_mult: 0.001
+    lr_mult: 1
     decay_mult: 1
   }
   param {
-    lr_mult: 0.002
+    lr_mult: 2
     decay_mult: 0
   }
   convolution_param {
@@ -1107,11 +1053,11 @@ layer {
   bottom: "Mconv4_stage4"
   top: "Mconv5_stage4_new"
   param {
-    lr_mult: 0.001
+    lr_mult: 0.01
     decay_mult: 1
   }
   param {
-    lr_mult: 0.002
+    lr_mult: 0.02
     decay_mult: 0
   }
   convolution_param {
@@ -1125,24 +1071,6 @@ layer {
     bias_filler {
       type: "constant"
     }
-  }
-}
-layer {
-  name: "Mrelu5_stage4"
-  type: "ReLU"
-  bottom: "Mconv5_stage4_new"
-  top: "Mconv5_stage4_new"
-}
-layer {
-  name: "manifolds_stage4"
-  type: "Python"
-  bottom: "Mconv5_stage4_new"
-  bottom: "metadata"
-  top: "manifolds_stage4"
-  python_param {
-    module: "newheatmaps"
-    layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1, \"Lambda\": 0.050 }"
   }
 }
 layer {
@@ -1190,7 +1118,7 @@ layer {
   bottom: "conv1_stage5"
   bottom: "Mconv5_stage4_new"
   bottom: "pool_center_lower"
-  bottom: "manifolds_stage4"
+  bottom: "label_lower"
   top: "concat_stage5"
   concat_param {
     axis: 1
@@ -1202,11 +1130,11 @@ layer {
   bottom: "concat_stage5"
   top: "Mconv1_stage5_new_mf"
   param {
-    lr_mult: 0.001
+    lr_mult: 1
     decay_mult: 1
   }
   param {
-    lr_mult: 0.002
+    lr_mult: 2
     decay_mult: 0
   }
   convolution_param {
@@ -1330,11 +1258,11 @@ layer {
   bottom: "Mconv4_stage5"
   top: "Mconv5_stage5_new"
   param {
-    lr_mult: 0.001
+    lr_mult: 0.01
     decay_mult: 1
   }
   param {
-    lr_mult: 0.002
+    lr_mult: 0.02
     decay_mult: 0
   }
   convolution_param {
@@ -1348,24 +1276,6 @@ layer {
     bias_filler {
       type: "constant"
     }
-  }
-}
-layer {
-  name: "Mrelu5_stage5"
-  type: "ReLU"
-  bottom: "Mconv5_stage5_new"
-  top: "Mconv5_stage5_new"
-}
-layer {
-  name: "manifolds_stage5"
-  type: "Python"
-  bottom: "Mconv5_stage5_new"
-  bottom: "metadata"
-  top: "manifolds_stage5"
-  python_param {
-    module: "newheatmaps"
-    layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1, \"Lambda\": 0.050 }"
   }
 }
 layer {
@@ -1413,7 +1323,7 @@ layer {
   bottom: "conv1_stage6"
   bottom: "Mconv5_stage5_new"
   bottom: "pool_center_lower"
-  bottom: "manifolds_stage5"
+  bottom: "label_lower"
   top: "concat_stage6"
   concat_param {
     axis: 1
@@ -1425,11 +1335,11 @@ layer {
   bottom: "concat_stage6"
   top: "Mconv1_stage6_new_mf"
   param {
-    lr_mult: 0.001
+    lr_mult: 1
     decay_mult: 1
   }
   param {
-    lr_mult: 0.002
+    lr_mult: 2
     decay_mult: 0
   }
   convolution_param {
@@ -1553,11 +1463,11 @@ layer {
   bottom: "Mconv4_stage6"
   top: "Mconv5_stage6_new"
   param {
-    lr_mult: 0.001
+    lr_mult: 0.01
     decay_mult: 1
   }
   param {
-    lr_mult: 0.002
+    lr_mult: 0.02
     decay_mult: 0
   }
   convolution_param {
