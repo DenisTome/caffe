@@ -64,13 +64,12 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             if ((stage == 1 and conv_counter == 7) or
                 (stage > 1 and state != 'image' and (conv_counter in [1, 5]))):
                 conv_name = '%s_new' % conv_name
-                lr_m = 1e-2
+                lr_m = 1e-1 #1e-2
                 
             # additional for python layer
-            if (stage > 1 and state != 'image' and (conv_counter == 1)):
-                conv_name = '%s_mf' % conv_name
-                lr_m = 1e-1
-#                lr_m = 1e-2#1
+#            if (stage > 1 and state != 'image' and (conv_counter == 1)):
+#                conv_name = '%s_mf' % conv_name
+#                lr_m = 1 #1e-1
             n.tops[conv_name] = L.Convolution(n.tops[last_layer], kernel_size=kernel[l],
                                                   num_output=outCH[l], pad=int(math.floor(kernel[l]/2)),
                                                   param=[dict(lr_mult=lr_m, decay_mult=1), dict(lr_mult=lr_m*2, decay_mult=0)],
@@ -94,8 +93,8 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             last_manifold = 'manifolds_stage%d' % stage
             debug_mode = 0
             parameters = '{"njoints": 17,"sigma": 1, "debug_mode": %r, "max_area": 100, "percentage_max": 3, "train": %u, "Lambda": %.3f }' % (debug_mode, not deploy, 0.05)
-            # TODO: change it back
-#            n.tops[last_manifold] = L.Python(n.tops[last_layer],n.tops[label_name[2]],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str=parameters))#,loss_weight=1)
+            # DONE: change it back
+            n.tops[last_manifold] = L.Python(n.tops[last_layer],n.tops[label_name[2]],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str=parameters))#,loss_weight=1)
 #    not this one        n.tops[last_manifold] = L.Python(n.tops[label_name[1]],n.tops[label_name[2]],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str=parameters))#,loss_weight=1)
         elif layername[l] == 'L':
             # Loss: n.loss layer is only in training and testing nets, but not in deploy net.
@@ -117,10 +116,11 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
                 n.tops['drop%d_stage%d' % (drop_counter, stage)] = L.Dropout(n.tops[last_layer], in_place=True, dropout_param=dict(dropout_ratio=0.5))
                 drop_counter += 1
         elif layername[l] == '@':
-            # TODO: change it back
-            n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.pool_center_lower, n.tops[label_name[1]], concat_param=dict(axis=1))
+            # DONE: change it back
+#  no this          n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.pool_center_lower, n.tops[label_name[1]], concat_param=dict(axis=1))
 #            n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.pool_center_lower, n.tops[last_manifold], concat_param=dict(axis=1))
 
+            n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_manifold], n.pool_center_lower, concat_param=dict(axis=1))
             conv_counter = 1
             state = 'fuse'
             last_layer = 'concat_stage%d' % stage
@@ -212,7 +212,7 @@ if __name__ == "__main__":
                         snapshot=snapshot, gpu=True)
     ### END
 
-    d_caffemodel = '%s/caffemodel/manifold_merging_frominit' % directory # the place you want to store your caffemodel
+    d_caffemodel = '%s/caffemodel/manifold_samearch' % directory # the place you want to store your caffemodel
 
     # num_parts and np_in_lmdb are two parameters that are used inside the framework to move from one
     # dataset definition to another. Num_parts is the number of parts we want to have, while

@@ -92,22 +92,28 @@ class MyCustomLayer(caffe.Layer):
         Pos: grid where the results are computed from
         Mean: gaussian mean value
         Sigma: gaussian convariance matrix"""
-        rv = multivariate_normal([mean[1],mean[0]], Sigma)
+        Sigma_matrix = np.copy(Sigma)
+        Sigma_matrix[0,0] = Sigma[1,1]
+        Sigma_matrix[1,1] = Sigma[0,0]
+        rv = multivariate_normal([mean[1],mean[0]], Sigma_matrix)
         tmp = rv.pdf(pos)
         hmap = np.multiply(tmp, np.sqrt(np.power(2*np.pi,2)*np.linalg.det(Sigma)))
         return hmap
     
-    def generateHeatMaps(self, points):
+    def generateHeatMaps(self, points, cov_matrices):
         """Generate heat-maps for all the joint in the skeleton."""
         heatMaps = np.zeros((self.num_channels, self.input_size, self.input_size))
-        sigma_sq = np.power(self.sigma,2)
-        Sigma = [[sigma_sq,0],[0,sigma_sq]]
+#        sigma_sq = np.power(self.sigma,2)
+#        Sigma = [[sigma_sq,0],[0,sigma_sq]]
         
         x, y = np.mgrid[0:self.input_size, 0:self.input_size]
         pos = np.dstack((x, y))
-        
         for i in range(self.num_joints):
+            Sigma = np.array(cov_matrices[i]).reshape(2,2)
             heatMaps[i,:,:] = self.generateGaussian(pos, points[:,i], Sigma)
+            # TODO: change it back
+            sio.savemat('/home/denitome/Desktop/res_h.mat',{'h':heatMaps})
+            raise Exception("cov error")
         # generating last heat maps which contains all joint positions
         heatMaps[-1,:,:] = np.maximum(1.0-heatMaps[0:heatMaps.shape[0]-1,:,:].max(axis=0), 0)
         return heatMaps
@@ -155,6 +161,8 @@ class MyCustomLayer(caffe.Layer):
         
         # extract covariance matrix
         flatten_hm = heatmap_area.flatten()
+        idx = np.where( flatten_hm < 0)
+        flatten_hm[idx] = 0
         flatten_hm /= flatten_hm.sum()
         x_coord = np.subtract(np.tile(range(area[0],area[2]), area[3]-area[1]),mean_value[0])
         y_coord = np.subtract(np.repeat(range(area[1],area[3]), area[2]-area[0]),mean_value[1])
@@ -218,8 +226,8 @@ class MyCustomLayer(caffe.Layer):
         
         points = self.project2D(r, self.z, a, self.e, self.default_r[camera], s).squeeze()
         points += mean[:,np.newaxis]
-        
-        return points
+
+        return points, covariance_matrices
     
     def extractMetadata(self, channel):
         """Given a channel, extract the metadata about the frame."""
@@ -242,8 +250,8 @@ class MyCustomLayer(caffe.Layer):
         for b in range(self.batch_size):
             (_, camera, _, _) = self.extractMetadata(metadata[b])
             # get new points
-            points = self.manifoldDataConversion(input_heatMaps[b], camera)
-            heatMaps[b] = self.generateHeatMaps(points)
+            (points, cov_matrices) = self.manifoldDataConversion(input_heatMaps[b], camera)
+            heatMaps[b] = self.generateHeatMaps(points, cov_matrices)
             
             if (self.debug_mode):
                 for j in range(self.num_channels):
@@ -261,6 +269,7 @@ class MyCustomLayer(caffe.Layer):
         top[0].data[...] = heatMaps
         # TODO: check if this is needed
         self.diff[...] = input_heatMaps - heatMaps
+        # DONE: changing it back
 #        top[0].data[...] = input_heatMaps
         #pass
     
