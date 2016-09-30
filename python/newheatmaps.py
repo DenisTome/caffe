@@ -103,17 +103,17 @@ class MyCustomLayer(caffe.Layer):
     def generateHeatMaps(self, points, cov_matrices):
         """Generate heat-maps for all the joint in the skeleton."""
         heatMaps = np.zeros((self.num_channels, self.input_size, self.input_size))
-#        sigma_sq = np.power(self.sigma,2)
-#        Sigma = [[sigma_sq,0],[0,sigma_sq]]
+        sigma_sq = np.power(self.sigma,2)
+        Sigma = np.eye(2)*sigma_sq # np.array([[sigma_sq,0],[0,sigma_sq]])
         
         x, y = np.mgrid[0:self.input_size, 0:self.input_size]
         pos = np.dstack((x, y))
         for i in range(self.num_joints):
-            Sigma = np.array(cov_matrices[i]).reshape(2,2)
+#            Sigma = np.array(cov_matrices[i]).reshape(2,2)
             heatMaps[i,:,:] = self.generateGaussian(pos, points[:,i], Sigma)
-            # TODO: change it back
-            sio.savemat('/home/denitome/Desktop/res_h.mat',{'h':heatMaps})
-            raise Exception("cov error")
+#            # DONE: change it back
+#            sio.savemat('/home/denitome/Desktop/res_h.mat',{'h':heatMaps})
+#            raise Exception("cov error")
         # generating last heat maps which contains all joint positions
         heatMaps[-1,:,:] = np.maximum(1.0-heatMaps[0:heatMaps.shape[0]-1,:,:].max(axis=0), 0)
         return heatMaps
@@ -239,6 +239,17 @@ class MyCustomLayer(caffe.Layer):
         person = channel[0,0,3]
 #        raise Exception("id:%r\ncamera:%r\naction:%r\nperson:%r" % (idx,camera,action,person))
         return (idx, camera, action, person)
+    
+    def normaliseHeatMap(self, heatMaps_old, heatMap):
+        max_val = heatMap.max()
+        max_before = heatMaps_old.max()
+        return (heatMap/max_val)*max_before
+
+    def sumHeatMaps(self, heatMaps_old, heatMaps_new):
+        out_heatMaps = np.zeros((self.num_channels, self.input_size, self.input_size))
+        for i in range(self.num_channels):
+            out_heatMaps[i] = self.normaliseHeatMap(heatMaps_old[i], heatMaps_old[i]+heatMaps_new[i])
+        return out_heatMaps
         
     def forward(self, bottom, top):
         """Forward data in the architecture to the following layer."""
@@ -251,7 +262,8 @@ class MyCustomLayer(caffe.Layer):
             (_, camera, _, _) = self.extractMetadata(metadata[b])
             # get new points
             (points, cov_matrices) = self.manifoldDataConversion(input_heatMaps[b], camera)
-            heatMaps[b] = self.generateHeatMaps(points, cov_matrices)
+            heatMaps[b] = self.sumHeatMaps(input_heatMaps[b], self.generateHeatMaps(points, cov_matrices))
+#            heatMaps[b] = self.generateHeatMaps(points, cov_matrices)
             
             if (self.debug_mode):
                 for j in range(self.num_channels):
@@ -268,15 +280,15 @@ class MyCustomLayer(caffe.Layer):
         
         top[0].data[...] = heatMaps
         # TODO: check if this is needed
-        self.diff[...] = input_heatMaps - heatMaps
+#        self.diff[...] = input_heatMaps - heatMaps
         # DONE: changing it back
 #        top[0].data[...] = input_heatMaps
         #pass
     
     def backward(self, top, propagate_down, bottom):
         """Backward data in the learning phase. This layer does not propagate back information."""
-#        bottom[0].diff[...] = np.zeros(bottom[0].data.shape)
-        bottom[0].diff[...] = self.diff
+        bottom[0].diff[...] = np.zeros(bottom[0].data.shape)
+#        bottom[0].diff[...] = self.diff
         #pass
         
         

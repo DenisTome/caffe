@@ -29,7 +29,7 @@ fn_notification = 25
 iter_start_from = 0 #45000
 device_id = 0
 #folder_name = 'manifold_merging_gt_frominit/to_validate'
-folder_name = 'trial_5/to_validate'
+folder_name = 'trial_5/to_evaluate'
 
 def filterJoints(joints_orig):
     joints = [0] * len(joints_idx)

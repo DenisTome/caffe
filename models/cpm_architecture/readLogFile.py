@@ -237,7 +237,7 @@ def main():
             print 'Num iterations file = %d' % (curr_tr['iteration'][-1])
             train, val = combine_data(train, val, curr_tr, curr_ts, merge[i-1])
     main_title = 'Training with:\nbase_lr = %f; stepsize = %d; lr_mul = %f\nFinetuning: trial_5; Iter = %d ' % (base_lr, stepsize, stn_lrm, finetune_iter)
-    plotData(train, val, nstages, main_title, avg_line = True, avg_batch_size = 50)
+    plotData(train, val, nstages, main_title, avg_line = True, avg_batch_size = 150)
     
     if (len(filename) > 1):
         mergeLogFiles(filename,'prototxt/overall.txt', merge)
