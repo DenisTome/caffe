@@ -221,19 +221,19 @@ def plotData(train, val, nstages, main_title, avg_line = False, avg_batch_size =
 
 def main():
     #filename = ['prototxt/caffemodel/trial_5/log.txt']
-    filename = ['prototxt/log.txt']
+    filename = ['prototxt/log.txt','prototxt/log2.txt']
     #val_filename = ['prototxt/caffemodel/trial_5/validation.json']
     val_filename = []
     stn_lrm = 1e-4
     nstages = 6
-#    merge = [50000, 0]
+    merge = [45785, 0]
     finetune_iter = 50000
-    merge = [0]
+#    merge = [0]
     train, val, base_lr, stepsize = parse_log(filename[0], val_filename)
     print 'Num iterations file = %d' % (train['iteration'][-1])
     if (len(filename) > 1):
         for i in range(1,len(filename)):
-            curr_tr, curr_ts, base_lr_, stepsize_ = parse_log(filename[i], val_filename[i])
+            curr_tr, curr_ts, base_lr_, stepsize_ = parse_log(filename[i], val_filename)
             print 'Num iterations file = %d' % (curr_tr['iteration'][-1])
             train, val = combine_data(train, val, curr_tr, curr_ts, merge[i-1])
     main_title = 'Training with:\nbase_lr = %f; stepsize = %d; lr_mul = %f\nFinetuning: trial_5; Iter = %d ' % (base_lr, stepsize, stn_lrm, finetune_iter)

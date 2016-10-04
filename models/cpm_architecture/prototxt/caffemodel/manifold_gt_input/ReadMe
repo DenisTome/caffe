@@ -1,4 +1,0 @@
-Taking the model, randomly initialising the weights of the first Mconv layer in each stage and taking as input of the manifold the labels which are forwarded as output.
-
-IMPORTAT: the orded of the element concateneted in the concat layer IS DIFFERENT: swapped pool with manifold. Therefore these weights are NOT directly usable if the architecture is not changed.
-	  the architecture uses the RELU layers also on the last convolutional layers of each stage. If architecture does not, the weights are NOT directly usable.
