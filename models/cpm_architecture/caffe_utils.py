@@ -58,13 +58,15 @@ def setCaffeMode(gpu, device = 0):
         caffe.set_mode_cpu()
     
 def getCenterJoint(joints):
-    if (np.array(joints).shape[0] == 1):
-        joints = xyJoints(np.array(joints).flatten())
+    if not checkJointsNonLinearised(joints):
+        joints = xyJoints(np.array(joints))
     return joints[0]
 
 def getBoundingBox(joints, center, offset, img_width, img_height):
     """Get bounding box containing all joints keeping as constant as possible
     the aspect ratio of the box"""
+    if not checkJointsNonLinearised(joints):
+        joints = xyJoints(np.array(joints))
     max_x = -1
     max_y = -1
     for i in range(joints.shape[0]):
@@ -121,15 +123,44 @@ def generateGaussian(Sigma, input_size, position):
     hmap.flatten()[idx] = 0
     return hmap
 
-def cropImage(image, box_points):
+def generateHeatMaps(joints, input_size, sigma):
+    """Generate heat-map for each of the joints and one overal heat-maps containing
+    all the joints positions."""
+    heatMaps = np.zeros((joints.shape[0]+1, input_size, input_size))
+    for i in range(joints.shape[0]):
+        heatMaps[i] = generateGaussian(sigma, input_size, joints[i])
+    # generating last heat maps which contains all joint positions
+    heatMaps[-1] = np.maximum(1.0-heatMaps[0:heatMaps.shape[0]-1].max(axis=0), 0)
+    return heatMaps
+
+def cropImage(image, box_points, joints=False):
     """Given a box with the format [x_min, y_min, width, height]
     it returnes the cropped image"""
-    return image[box_points[1]:box_points[1]+box_points[3],box_points[0]:box_points[0]+box_points[2]]
+    croppedImage = image[box_points[1]:box_points[1]+box_points[3],box_points[0]:box_points[0]+box_points[2]]
+    if joints is False:
+        return croppedImage
+    if not checkJointsNonLinearised(joints):
+        joints = xyJoints(np.array(joints))
+    for j in range(joints.shape[0]):
+        joints[j][0] -= box_points[0]
+        joints[j][1] -= box_points[1]
+    return (croppedImage, joints)
 
-def resizeImage(image, new_size):
-    """Resize image to a defined size. The size if the same for width and height"""
-    return cv2.resize(image, (new_size, new_size), interpolation = cv2.INTER_CUBIC)
-#    return cv2.resize(image, (new_size, new_size), interpolation = cv2.INTER_LANCZOS4)
+def resizeImage(image, new_size, joints=False):
+    """Resize image to a defined size. The size if the same for width and height
+    If joint positions are provided, they are rescaled as well."""
+    resizedImage = cv2.resize(image, (new_size, new_size), interpolation = cv2.INTER_CUBIC)
+    if joints is False:
+        return resizedImage
+    if not checkJointsNonLinearised(joints):
+        joints = xyJoints(np.array(joints))
+    fx = float(new_size)/image.shape[1]
+    fy = float(new_size)/image.shape[0]
+    assert(fx != 0)
+    assert(fy != 0)
+    for j in range(joints.shape[0]):
+        joints[j] = map(int, np.multiply(joints[j], [fx,fy]))
+    return (resizedImage, joints)
 
 def getNumChannelsLayer(net, layer_name):
     return net.blobs[layer_name].channels
@@ -198,6 +229,14 @@ def xyJoints(linearisedJoints):
     xy = linearisedJoints.reshape((num_elems/2, 2))
     return xy
 
+def checkJointsNonLinearised(joints):
+    """Check if joints are in the [[x,y],[x,y],...] format"""
+    try:
+        check = joints.shape[0] > joints.shape[1]
+        return check
+    except:
+        return False
+
 def filterJoints(joints):
     """From the whole set of joints it removes those that are not used in 
     the error computation.
@@ -205,6 +244,13 @@ def filterJoints(joints):
     joints_idx = [0,1,2,3,6,7,8,12,13,14,15,17,18,19,25,26,27]
     new_joints = joints[joints_idx]
     return np.array(new_joints)
+
+def removeZ(joints):
+    """From [x,y,z,x,y,z,...] set of joint positions remove the z elements, returning
+    [x,y,x,y,...] list of joints."""
+    joints = np.array(joints).flatten()
+    joints = np.delete(joints, range(2, len(joints), 3))
+    return xyJoints(joints)
 
 def plotHeatMap(heatMap, secondHeatMaps=[], title=False):
     """Plot single heat-map"""
@@ -236,6 +282,28 @@ def plotHeatMaps(heatMaps, secondHeatMaps=[], title=False):
                 plotHeatMap(heatMaps[i], secondHeatMaps, title)
             plt.waitforbuttonpress()
 
+def plotImageJoints(image, joints):
+    """Plot the image and the joint positions"""
+    img = image.copy()
+    if not checkJointsNonLinearised(joints):
+        joints = xyJoints(np.array(joints))
+    for j in range(joints.shape[0]):
+        cv2.circle(img, (int(joints[j][0]), int(joints[j][1])), 3, (0, 255, 255), -1)
+    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    
+def plotJoints(joints, joints2=[]):
+    """Plot the image and the joint positions"""
+    if not checkJointsNonLinearised(joints):
+        joints = xyJoints(np.array(joints))
+    if (len(joints2) != 0):
+        joints2 = xyJoints(np.array(joints2).flatten())
+    for j in range(joints.shape[0]):
+        plt.scatter(joints[:,0],joints[:,1], color='r')
+        if (len(joints2) != 0):
+            plt.scatter(joints2[:,0],joints2[:,1], color='b')
+    axes = plt.gca()
+    axes.axis('equal')
+
 def loadJsonFile(json_file):
     """Load json file"""
     with open(json_file) as data_file:
@@ -253,4 +321,16 @@ def computeError(gt, pred):
     assert(gt.shape[0] == pred.shape[0])
     err = np.sqrt(np.power(gt-pred,2).sum(1)).mean()
     return err
+
+def checkFileExists(file_path):
+    try:
+        return os.path.isfile(file_path)
+    except:
+        return False
+
+def checkDirExists(dir_path):
+    try:
+        return os.path.isdir(dir_path)
+    except:
+        return False
     

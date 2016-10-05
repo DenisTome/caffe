@@ -5,314 +5,180 @@ Created on Wed Jun 15 14:25:18 2016
 @author: denitome
 """
 
-import os
 import re
-import caffe
-import cv2
 import json
 import numpy as np
-from scipy.stats import multivariate_normal
-import scipy.io as sio
-import matplotlib.pyplot as plt
+import caffe_utils as ut
+import argparse
 
-# general settings
-samplingRate = 450 #150
-offset = 25
-inputSizeNN = 368
-outputSizeNN = 46
-joints_idx = [0,1,2,3,6,7,8,12,13,14,15,17,18,19,25,26,27]
-sigma = 7
-sigma_center = 21
-stride = 8
-verbose = False
-fn_notification = 25
-iter_start_from = 0 #45000
-device_id = 0
-#folder_name = 'manifold_merging_gt_frominit/to_validate'
-folder_name = 'manifold_samearch3/to_evaluate'
-
-def filterJoints(joints_orig):
-    joints = [0] * len(joints_idx)
-    for j in range(len(joints_idx)):
-        joints[j] = map(int, joints_orig[joints_idx[j]])
-    return joints
-    
-def getBoundingBox(data):
-    joints = filterJoints(data['joint_self'])
-            
-    max_x = -1
-    max_y = -1
-    center = map(int, data['objpos'])
-    for i in range(len(joints)):
-        j = joints[i]
-        if (max_x < abs(j[0]-center[0])):
-            max_x = abs(j[0]-center[0])
-        if (max_y < abs(j[1]-center[1])):
-            max_y = abs(j[1]-center[1])
-    offset_x = max_x + offset
-    offset_y = max_y + offset
-    if (offset_x > offset_y):
-        offset_y = offset_x
-    else:
-        offset_x = offset_y
-    if (center[0] + offset_x > data['img_width']):
-        offset_x = data['img_width'] - center[0]
-    if (center[0] - offset_x < 0):
-        offset_x = center[0]
-    if (center[1] + offset_y > data['img_height']):
-        offset_y = data['img_height'] - center[1]
-    if (center[1] - offset_y < 0):
-        offset_y = center[1]
-    return (offset_x, offset_y)
-
-def visualiseImage(image, bbox, center, joints):
-    img = image.copy()
-    img_croppad = image.copy()
-    img_croppad = img_croppad[center[1]-bbox[1]:center[1]+bbox[1], center[0]-bbox[0]:center[0]+bbox[0]]
-    
-    cv2.line(img, (center[0]-bbox[0],center[1]-bbox[1]), (center[0]+bbox[0],center[1]-bbox[1]), (255, 0, 0), 2)
-    cv2.line(img, (center[0]+bbox[0],center[1]-bbox[1]), (center[0]+bbox[0],center[1]+bbox[1]), (255, 0, 0), 2)
-    cv2.line(img, (center[0]+bbox[0],center[1]+bbox[1]), (center[0]-bbox[0],center[1]+bbox[1]), (255, 0, 0), 2)
-    cv2.line(img, (center[0]-bbox[0],center[1]+bbox[1]), (center[0]-bbox[0],center[1]-bbox[1]), (255, 0, 0), 2)
-   
-    for j in range(len(joints)):
-        cv2.circle(img_croppad, (int(joints[j][0]), int(joints[j][1])), 3, (0, 255, 255), -1)
-    
-    cv2.imshow('Selected image',img)
-    cv2.imshow('Cropped image',img_croppad)
-    cv2.waitKey()
-       
-def generateGaussian(pos, mean, Sigma):
-    rv = multivariate_normal([mean[1],mean[0]], Sigma)
-    tmp = rv.pdf(pos)
-    hmap = np.multiply(tmp, np.sqrt(np.power(2*np.pi,2)*np.linalg.det(Sigma)))
-    return hmap
-
-def generateHeatMaps(center, joints):
-    num_joints = len(joints_idx)
-    heatMaps = np.zeros((inputSizeNN,inputSizeNN,num_joints+1))
-    sigma_sq = np.power(sigma,2)
-    Sigma = [[sigma_sq,0],[0,sigma_sq]]
-    
-    x, y = np.mgrid[0:368, 0:368]
-    pos = np.dstack((x, y))
-    
-    # heatmaps representing the position of the joints
-    for i in range(num_joints):
-        heatMaps[:,:,i] = generateGaussian(pos, joints[i], Sigma)
-    # generating last heat maps which contains all joint positions
-    heatMaps[:,:,-1] = np.maximum(1.0 - heatMaps[:,:,0:heatMaps.shape[2]-1].max(axis=2), 0)
-    
-    # heatmap to be added to the RGB image
-    sigma_sq = np.power(sigma_center,2)
-    Sigma = [[sigma_sq,0],[0,sigma_sq]]
-    center_hm = np.zeros((inputSizeNN,inputSizeNN,1))
-    center_hm[:,:,0] = generateGaussian(pos, center, Sigma)
-    return heatMaps, center_hm
-
-def findPoint(heatMap):
-    idx = np.where(heatMap == heatMap.max())
-    x = idx[1][0]
-    y = idx[0][0]
-    return x,y
-
-def generateChannel(frame_number, masks):
-    # extract data; all the index problem about the masks are hendled inside the manifold layer
-    # we just need the correct frame index here
-    camera = masks['mask_camera'][0,frame_number-1]
-    action = masks['mask_action'][0,frame_number-1]
-    person = masks['mask_person'][0,frame_number-1]
-    
-    metadata = np.zeros((inputSizeNN,inputSizeNN))
-    metadata[0,0] = frame_number
-    metadata[0,1] = camera
-    metadata[0,2] = action
-    metadata[0,3] = person
-    
-    metadata = metadata[:,:,np.newaxis]
-    return metadata
-    
-
-def runCaffeOnModel(data, model_dir, def_file, idx, masks):
-    layer_names = ['conv7_stage1_new', 'Mconv5_stage2_new', 'Mconv5_stage3_new',
-               'Mconv5_stage4_new', 'Mconv5_stage5_new', 'Mconv5_stage6_new']
-    loss_stage = np.zeros(len(layer_names))
-    mpepj_model = []
-    
-    iterNumber = getIter(model_dir)
-    print '-------------------------------'
-    print '  Evaluating iteration: %d' % iterNumber
-    print '-------------------------------'
-    
-    print 'Loading model...'
-    net = caffe.Net(def_file, model_dir, caffe.TEST)
-    print 'Done.'
-    for i in range(len(idx)):
-        if (np.mod(i,fn_notification) == 0):
-            print 'Iteration %d out of %d' % (i+1, len(idx))
-        fno = idx[i]
-        if (not data[fno]['isValidation']):
+def runCaffeOnModel(NN, net, data, masks, iteration, show_iter=25):
+    # get just elements from the validation set
+    val_idx = []
+    for i in range(len(data)):
+        if (not data[i]['isValidation']):
 			continue
+        val_idx.append(i)
 
-        curr_data = data[fno]
-        center = map(int, curr_data['objpos'])
-        bbox = getBoundingBox(curr_data)
-              
-        # take data
-        img = cv2.imread(curr_data['img_paths'])
-        joints = filterJoints(curr_data['joint_self'])
-        
-        # crop around person
-        img_croppad = img[center[1]-bbox[1]:center[1]+bbox[1], center[0]-bbox[0]:center[0]+bbox[0]]
-        
-        # transform data
-        offset_left = - (center[0] - bbox[0])
-        offset_top = - (center[1] - bbox[1])
-        center = np.sum([center, [offset_left, offset_top]], axis=0)
-        for j in range(len(joints)):
-            joints[j][0] += offset_left
-            joints[j][1] += offset_top
-            del joints[j][2]
-        
-        # visualize data
-#        if (verbose):
-#            visualiseImage(img, bbox, map(int, curr_data['objpos']), joints)
-        
-        # resize image and update joint positions
-        resizedImage = cv2.resize(img_croppad, (inputSizeNN,inputSizeNN), interpolation = cv2.INTER_CUBIC)
-        fx = float(inputSizeNN)/img_croppad.shape[1]
-        fy = float(inputSizeNN)/img_croppad.shape[0]
-        assert(fx != 0)
-        assert(fy != 0)
-        
-        center = map(int, np.multiply(center, [fx,fy]))
-        for j in range(len(joints)):
-            joints[j] = map(int, np.multiply(joints[j], [fx,fy]))
-        if (verbose):
-            tmp = resizedImage.copy()
-            for j in range(len(joints)):
-                cv2.circle(tmp, (joints[j][0], joints[j][1]), 3, (0, 255, 255), -1)
-            cv2.circle(tmp, (center[0], center[1]), 3, (255, 255, 255), -1)
-            plt.imshow(cv2.cvtColor(tmp, cv2.COLOR_BGR2RGB))
-            plt.waitforbuttonpress()
-        
-        labels, center = generateHeatMaps(center, joints)
-        metadata = generateChannel(curr_data['annolist_index'], masks)
-        
-        if (verbose):
-            for j in range(len(joints) + 1):
-                plt.imshow(labels[:,:,j])
-                plt.waitforbuttonpress()
-                
-        resizedImage = np.divide(resizedImage,float(256))
-        resizedImage = np.subtract(resizedImage, 0.5)
-
-        num_channels = net.blobs['data'].channels
-        if num_channels == 4:
-            img4ch = np.concatenate((resizedImage, center), axis=2)
-            img4ch = np.transpose(img4ch, (2, 0, 1))
-            # Give input
-            net.blobs['data'].data[...] = img4ch    
-        else:
-            img5ch = np.concatenate((resizedImage, center, metadata), axis=2)
-            img5ch = np.transpose(img5ch, (2, 0, 1))
-            # Give input
-            net.blobs['data'].data[...] = img5ch
-
-        net.forward()
+    loss = np.zeros(len(val_idx))
+    err  = np.zeros(len(val_idx))
     
-        for l in range(len(layer_names)):
-            heatMaps = net.blobs.get(layer_names[l]).data
-            num_channels = heatMaps.shape[1]
-            heatMaps = np.reshape(heatMaps,(num_channels,outputSizeNN,outputSizeNN))
-            heatMaps = np.transpose(heatMaps, (1, 2, 0))
+    for i in range(len(val_idx)):
+        if (np.mod(i, show_iter) == 0):
+            print 'Model %r, Iteration %d out of %d' % (iteration, i+1, len(val_idx))
             
-            # reshape the heatMaps and compute loss
-            err = 0
-            loss = 0
-            for j in range(num_channels-1):
-                curr_heatMap = cv2.resize(heatMaps[:,:,j],(inputSizeNN,inputSizeNN))
-                
-                diff = np.subtract(curr_heatMap, labels[:,:,j])
-                dot = np.power(diff, 2)
-                loss += np.sum(dot)/(inputSizeNN*inputSizeNN)
-                if (l == (len(layer_names)-1)):
-                    x,y = findPoint(curr_heatMap)
-                    err += np.sqrt(np.power(joints[j][0]-x,2)+np.power(joints[j][1]-y,2))
-#                plt.imshow(curr_heatMap)
-#                plt.waitforbuttonpress()
-            loss_stage[l] += loss
-        mpepj_model.append(float(err)/(num_channels-1))
+        curr_data = data[val_idx[i]]
+        img = ut.cv2.imread(curr_data['img_paths'])
+        joints = np.array(curr_data['joint_self'])
+        joints = ut.removeZ(joints)
+        gt = joints.copy()
     
-    mpepj_value = np.mean(mpepj_model)
-    val = dict([('iteration',[]), ('loss_iter',[]), ('loss_stage',[]), ('mpepj',[]), ('stage',[])])
-    
-    for l in range(len(layer_names)):
-        val['iteration'].append(iterNumber)
-        val['loss_iter'].append(np.sum(loss_stage))
-        val['loss_stage'].append(float(loss_stage[l])/len(mpepj_model))
-        val['mpepj'].append(mpepj_value)
-        val['stage'].append(l+1)
+        center = ut.getCenterJoint(joints)
+        img_width = img.shape[1]
+        img_height = img.shape[0]
+        box_points = ut.getBoundingBox(joints, center, NN['offset'], img_width, img_height)
         
-    return val
+        # manipulate image and joints for caffe
+        (img_croppad, joints) = ut.cropImage(img, box_points, joints)
+        (resizedImage, joints) = ut.resizeImage(img_croppad, NN['inputSize'], joints)
+        resizedImage = np.divide(resizedImage, float(256))
+        resizedImage = np.subtract(resizedImage, 0.5)
+        
+        # generate labels and center channel
+        input_size = NN['inputSize']
+        labels = ut.generateHeatMaps(ut.filterJoints(joints),  NN['outputSize'], NN['sigma'])
+        center_channel = ut.generateGaussian(NN['sigma_center'], input_size, [input_size/2, input_size/2])
+        
+        num_channels = ut.getNumChannelsLayer(net, 'data')
+        if (num_channels == 4):
+            imgch = np.concatenate((resizedImage, center_channel[:,:,np.newaxis]), axis=2)
+        else:
+            fno = int(curr_data['annolist_index'])
+            camera = masks['mask_camera'][0, fno - 1]
+            action = masks['mask_action'][0, fno - 1]
+            person = masks['mask_person'][0, fno - 1]
+            metadata_ch = ut.generateMaskChannel(NN['inputSize'],
+                                                 curr_data['annolist_index'], camera,
+                                                 action, person)
+            imgch = np.concatenate((resizedImage, center_channel[:,:,np.newaxis], metadata_ch), axis=2)
+
+        imgch = np.transpose(imgch, (2, 0, 1))
+        ut.netForward(net, imgch)
+        
+        # get results
+        layer_name = 'Mconv5_stage6_new'
+        out = ut.getOutputLayer(net, layer_name)
     
-def combine_data(val, new_val):
-    for i in range(len(new_val['iteration'])):
-        val['iteration'].append(new_val['iteration'][i])
-        val['loss_iter'].append(new_val['loss_iter'][i])
-        val['loss_stage'].append(new_val['loss_stage'][i])
-        val['mpepj'].append(new_val['mpepj'][i])
-        val['stage'].append(new_val['stage'][i])
-    return val
+        heatMaps = ut.restoreSize(out, img.shape[:2], box_points)
+        predictions = ut.findPredictions(NN['njoints'], heatMaps)
+        
+        gt = ut.filterJoints(gt)
+        err[i] = ut.computeError(gt, predictions)
+        labels = ut.restoreSize(labels, img.shape[:2], box_points)
+        diff = np.subtract(heatMaps,labels).flatten()
+        loss[i] = np.dot(diff,diff)/(NN['outputSize']*2*(NN['njoints']+1))
+        
+    val = {'iteration':iteration, 'mpjpe':err.mean(), 'loss':loss.mean()}
+    return val    
 
 def getIter(item):
     regex_iteration = re.compile('pose_iter_(\d+).caffemodel')
     iter_match = regex_iteration.search(item)
     return int(iter_match.group(1))
 
-def getLossOnValidationSet(json_file, models, mask_file):
-    output_file = models + '/validation.json'
-    prototxt = models + '/pose_deploy.prototxt'
-    files = [f for f in os.listdir(models) if f.endswith('.caffemodel')]
+def getLossOnValidationSet(NN, models_dir, json_file, masks, prototxt, output, samplingRate):
+    # get models
+    files = [f for f in ut.os.listdir(models_dir) if f.endswith('.caffemodel')]
     files = sorted(files, key=getIter)
-    val = dict([('iteration',[]), ('loss_iter',[]), ('loss_stage',[]), ('mpepj',[]), ('stage',[])])
     
     print 'Loading json file with annotations...'
-    with open(json_file) as data_file:
-        data_this = json.load(data_file)
-        data_this = data_this['root']
-        data = data_this
-    print 'Done.'
-    # index is in Matlab format
+    (data, num_elem) = ut.loadJsonFile(json_file)
     print 'Loading mask file...'
-    masks = sio.loadmat(mask_file)
+    masks = ut.sio.loadmat(masks)
     print 'Done.'
     
-    numSample = len(data)
-    print 'overall data %d' % len(data)
-    idx = range(0, numSample, samplingRate)
-    
+    results = [dict() for x in range(len(files))]
     for i in range(len(files)):
-        model_dir = '%s/%s' % (models, files[i])
-        if (getIter(model_dir) < iter_start_from):
-            continue
-        new_val = runCaffeOnModel(data, model_dir, prototxt, idx, masks)
-        val = combine_data(val, new_val)
+        model_dir = '%s/%s' % (models_dir, files[i])
+        iterNumber = getIter(model_dir)
+        print '-------------------------------'
+        print '  Evaluating iteration: %d' % iterNumber
+        print '-------------------------------'
+        net = ut.loadNetFromPath(model_dir, prototxt)
+        val = runCaffeOnModel(NN, net, data[0:num_elem:samplingRate], masks, iterNumber)
+        results[i] = val
         # save json
-        with open(output_file, 'w+') as out:
-            json.dump(val, out)
-    return val
+        with open(output, 'w+') as out:
+            json.dump(results, out)
+    return results
 
-#def main():
-caffe.set_mode_gpu()
-caffe.set_device(device_id)
+def checkModelsDir(path):
+    if not ut.checkDirExists(path):
+        raise Exception("Models directory does not exist")
+    files = [f for f in ut.os.listdir(path) if f.endswith('.caffemodel')]
+    if not len(files):
+        raise Exception("No caffemodel file found in %r" % path)
+    deploy_file = path+'/pose_deploy.prototxt'
+    if not ut.checkFileExists(deploy_file):
+        raise Exception("No prototxt file found in %r" % path)
 
-caffe_dir = os.environ.get('CAFFE_HOME_CPM')
-json_file = '%s/models/cpm_architecture/jsonDatasets/H36M_annotations.json' % caffe_dir
-caffe_models_dir = '%s/models/cpm_architecture/prototxt/caffemodel/%s' % (caffe_dir, folder_name)
-mask_file = '%s/models/cpm_architecture/jsonDatasets/H36M_masks.mat' % caffe_dir
+def plotResults(results):
+    if results is dict:
+        print 'Iteration: %r\nMpjpe: %r\nLoss: %r' % (results['iteration'],results['mpjpe'],results['loss'])
+        return
+    x = np.empty(len(results))
+    mpjpes = np.empty(len(results))
+    losses = np.empty(len(results))
+    for i in len(results):
+        x[i] = results[i]['iteration']
+        mpjpes[i] = results[i]['mpjpe']
+        losses[i] = results[i]['loss']
+    ut.plt.plot(x,mpjpes,'r',x,losses,'b')
+    ut.plt.legend(('mpjpe','loss'))
+    ut.plt.xlabel('Iterations')
 
-loss = getLossOnValidationSet(json_file, caffe_models_dir, mask_file)
+def writeReadMe(path, json, masks, sampling):
+    readMe_file = path + '/ReadMe.txt'
+    with open(readMe_file,'w+') as readMe:
+        readMe.write('Automatically generated ReadMe file\n\n')
+        readMe.write('Validation run details:\n')
+        readMe.write('Json file path: %r\n' % json)
+        readMe.write('Maks file path: %r\n' % masks)
+        readMe.write('Sampling: %r\n' % sampling)
 
-#if __name__ == '__main__':
-#    main()
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('models_dir', metavar='models directory', type=str, help='Directory containing caffemodels and pose_deploy.prototxt')
+    parser.add_argument('-s', dest='sampling', type=int, default=50, help='Sampling factor of the frames (default 50)')
+    parser.add_argument('-o', dest='file_name', help='Name of the generated json file containing the results')
+    parser.add_argument('--json', dest='json_file', type=str, help='Path to the json file containing the val-set data')
+    parser.add_argument('--masks', dest='masks_file', type=str, help='Path to the mat file containing the val-set masks')
+    parser.add_argument('--with_cpu', action='store_true', dest='with_cpu', help='Caffe uses CPU for feature extraction')
+    
+    args = parser.parse_args()
+    checkModelsDir(args.models_dir)
+    
+    # setting up environment
+    NN = ut.load_configuration(gpu=(not args.with_cpu))
+    ut.setCaffeMode(NN['GPU'])
+    
+    # defining source files
+    json_file = ut.getCaffeCpm()+'/jsonDatasets/H36M_annotations.json'
+    if ((args.json_file is not None) and ut.checkFileExists(args.json_file)):
+        json_file = args.json_file
+    mask_file = ut.getCaffeCpm()+'/jsonDatasets/H36M_masks.mat'
+    if ((args.masks_file is not None) and ut.checkFileExists(args.masks_file)):
+        mask_file = args.masks_file
+    # model definition
+    prototxt = args.models_dir + '/pose_deploy.prototxt'
+    # output file
+    output_file = args.models_dir + '/validation.json'
+    if args.file_name is not None:
+        output_file = args.models_dir + '/' + args.file_name + '.json'
+    results = getLossOnValidationSet(NN, args.models_dir, json_file,
+                                     mask_file, prototxt, output_file, int(args.sampling))
+    writeReadMe(args.models_dir, json_file, mask_file, int(args.sampling))
+    
+    plotResults(results)
+
+if __name__ == '__main__':
+    main()

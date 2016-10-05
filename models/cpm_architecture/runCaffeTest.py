@@ -53,6 +53,7 @@ def predictionsFromFrame(NN, net, curr_data):
     return (predictions, err)
 
 def executeOnTestSet(NN, net, data, num_elem, offset = 0):
+    # TODO: remove this
     num_elem = 20
     preds  = np.empty((num_elem, NN['njoints']*2))
     errors = np.zeros(num_elem)
@@ -106,6 +107,15 @@ def main():
         json_file = args.json_file
     else:
         json_file = ut.getCaffeCpm() + '/jsonDatasets/H36M_annotations_testSet.json'
+    
+    # load caffe model
+    if ((args.caffemodel is not None) and (args.prototxt is not None)):
+        net = ut.loadNetFromPath(args.caffemodel, args.prototxt)
+    else:
+        # TODO: test with different model (manifold) and check that metadata are correct
+        # TODO: always ask for the model?
+        net = ut.loadNet('trial_5', 70000)
+        
     (data, num_elem) = ut.loadJsonFile(json_file)
     
     # set environment
@@ -130,13 +140,6 @@ def main():
         (preds, errors, frame_num) = mergeParts(NN, args.merge_parts_dir, num_elem, elems_per_part)
         ut.sio.savemat(output_file, {'preds':preds,'errors':errors,'frame_num':frame_num})
         return
-    
-    # load caffe model
-    if ((args.caffemodel is not None) and (args.prototxt is not None)):
-        net = ut.loadNetFromPath(args.caffemodel, args.prototxt)
-    else:
-        # TODO: test with different model (manifold) and check that metadata are correct
-        net = ut.loadNet('trial_5', 70000)
     
     # run model on test set
     (preds, errors, frame_num) = executeOnTestSet(NN, net, data[idx_part], elems_per_part)
