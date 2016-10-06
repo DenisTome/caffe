@@ -52,14 +52,12 @@ def predictionsFromFrame(NN, net, curr_data):
     err = np.sqrt(np.power(gt-predictions,2).sum(1)).mean()
     return (predictions, err)
 
-def executeOnTestSet(NN, net, data, num_elem, offset = 0):
-    # TODO: remove this
-    num_elem = 20
+def executeOnTestSet(NN, net, data, num_elem, offset=0, show_iter=50):
     preds  = np.empty((num_elem, NN['njoints']*2))
     errors = np.zeros(num_elem)
     frame_num = np.zeros(num_elem)
     for fno in range(num_elem):
-        if not np.mod(fno,10):
+        if not np.mod(fno, show_iter):
             print 'Frame %r of %r' % (fno, num_elem)
         curr_data = data[fno]
         (curr_pred, err) = predictionsFromFrame(NN, net, curr_data)
@@ -89,52 +87,56 @@ def mergeParts(NN, dir_path, num_elem, elems_per_part):
         frame_num[start_idx:start_idx+curr_data_size] = curr_data['frame_num']
     return (preds, errors, frame_num)
 
+def checkFilesExistance(prototxt, caffemodel):
+    if not ut.checkFileExists(prototxt):
+        raise Exception("Prototxt file not found at the given path: %r" % prototxt)
+    if not ut.checkFileExists(caffemodel):
+        raise Exception("Caffemodel file not found at the given path: %r" % caffemodel)
+
+def getNameOutputFile(caffemodel):
+    output_file = re.sub('.caffemodel', '_predictions.mat', caffemodel)
+    return output_file
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_def_path', dest='prototxt', type=str, help='Path to the prototxt file')
-    parser.add_argument('--model_path', dest='caffemodel', type=str, help='Path to the caffemodel')
+    parser.add_argument('prototxt', metavar='prototxt', type=str, help='Path to the prototxt file')
+    parser.add_argument('caffemodel', metavar='caffemodel', type=str, help='Path to the caffemodel')
+    parser.add_argument('-o', dest='out_directory', help='Output directory where to store the predictions')
     parser.add_argument('--json_file', dest='json_file', type=str, help='Path to the json file containing the test-set data')
-    parser.add_argument('--with_gpu', action='store_true', dest='with_gpu', help='Caffe uses GPU for feature extraction')
-    parser.add_argument('-o',dest='out_directory', help='Output directory where to store the predictions')
+    parser.add_argument('---with_cpu', action='store_true', dest='with_cpu', help='Caffe uses CPU for feature extraction')
     parser.add_argument('--num_parts', default=1, type=int, dest='num_parts', help='Split the test set into num_parts. Default set to 1')
     parser.add_argument('--run_part', default=1, type=int, dest='run_part', help='Run part of the splitted test set. Default set to 1')
     parser.add_argument('--merge_parts_dir', dest='merge_parts_dir', type=str, help='Merge part contained in the directory')
     
     args = parser.parse_args()
-    
-    # get json file path
-    if args.json_file is not None:
-        json_file = args.json_file
-    else:
-        json_file = ut.getCaffeCpm() + '/jsonDatasets/H36M_annotations_testSet.json'
-    
-    # load caffe model
-    if ((args.caffemodel is not None) and (args.prototxt is not None)):
-        net = ut.loadNetFromPath(args.caffemodel, args.prototxt)
-    else:
-        # TODO: test with different model (manifold) and check that metadata are correct
-        # TODO: always ask for the model?
-        net = ut.loadNet('trial_5', 70000)
-        
-    (data, num_elem) = ut.loadJsonFile(json_file)
+    checkFilesExistance(args.prototxt, args.caffemodel)
     
     # set environment
-    NN = ut.load_configuration(args.with_gpu)
+    NN = ut.load_configuration(gpu=(not args.with_cpu))
     ut.setCaffeMode(NN['GPU'])
-
+    
+    # get json file path
+    json_file = ut.getCaffeCpm() + '/jsonDatasets/H36M_annotations_testSet.json'
+    if args.json_file is not None:
+        json_file = args.json_file
+    
+    # load caffe model
+    net = ut.loadNetFromPath(args.caffemodel, args.prototxt)
+    (data, num_elem) = ut.loadJsonFile(json_file)
+    
     # Execution in multiple machines
     elems_per_part = int(np.floor(num_elem/int(args.num_parts)))
-    offset = 0
+    offset_data = 0 # for not perfect divisions
+    offset = elems_per_part*(int(args.run_part)-1)
     if (args.run_part == args.num_parts):
-        offset = num_elem - elems_per_part*int(args.num_part)
-    idx_part = range(elems_per_part*(int(args.run_part)-1), elems_per_part*int(args.run_part) + offset)
+        offset_data = num_elem - elems_per_part*int(args.num_part)
+    idx_part = range(offset, offset + elems_per_part + offset_data)
     
     # Set output file path
+    output_file = getNameOutputFile(args.caffemodel)
     if args.out_directory is not None:
-        output_file = args.json_file
-    else:
-        output_file = ut.getCaffeCpm()
-    output_file += '/predictions.mat'
+        output_file = args.out_directory
+        output_file += '/predictions.mat'
 
     if args.merge_parts_dir is not None:
         (preds, errors, frame_num) = mergeParts(NN, args.merge_parts_dir, num_elem, elems_per_part)
@@ -142,7 +144,7 @@ def main():
         return
     
     # run model on test set
-    (preds, errors, frame_num) = executeOnTestSet(NN, net, data[idx_part], elems_per_part)
+    (preds, errors, frame_num) = executeOnTestSet(NN, net, data[idx_part], elems_per_part, offset)
     print 'Mean error on the test set: %r' % errors.mean()
     
     # save results
@@ -150,10 +152,10 @@ def main():
         output_file += '/predictions_part%d.mat' % (int(args.run_part))
     ut.sio.savemat(output_file, {'preds':preds,'errors':errors,'frame_num':frame_num})
 
-if __name__ == '__main__':
-    main()
+#if __name__ == '__main__':
+#    main()
 
-
+# TODO: test it again
 
 
 

@@ -128,13 +128,20 @@ def plotResults(results):
     x = np.empty(len(results))
     mpjpes = np.empty(len(results))
     losses = np.empty(len(results))
-    for i in len(results):
+    for i in range(len(results)):
         x[i] = results[i]['iteration']
         mpjpes[i] = results[i]['mpjpe']
         losses[i] = results[i]['loss']
-    ut.plt.plot(x,mpjpes,'r',x,losses,'b')
-    ut.plt.legend(('mpjpe','loss'))
+    ut.plt.subplot(211), ut.plt.plot(x,mpjpes,'ro-')
+    ut.plt.title('mpjpe')
     ut.plt.xlabel('Iterations')
+    ut.plt.grid()
+    ut.plt.subplot(212), ut.plt.plot(x,losses,'bo-')
+    ut.plt.title('loss')
+    ut.plt.xlabel('Iterations')
+    ut.plt.grid()
+    ut.plt.suptitle('Errors on the validation set')
+    ut.plt.show()
 
 def writeReadMe(path, json, masks, sampling):
     readMe_file = path + '/ReadMe.txt'
@@ -182,3 +189,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+#results = open('/home/denitome/Libraries/caffe_cpm/models/cpm_architecture/prototxt/caffemodel/manifold_samearch3/to_evaluate/validation0.json')
+#results = json.load(results)
+#plotResults(results)
