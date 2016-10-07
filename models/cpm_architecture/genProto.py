@@ -21,7 +21,7 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
         n.image, n.center_map = L.Slice(n.data, slice_param=dict(axis=1, slice_point=3), ntop=2)
     else:
         input = "data"
-        dim1 = 1
+        dim1 = 18
         dim2 = 5
         dim3 = 368
         dim4 = 368
