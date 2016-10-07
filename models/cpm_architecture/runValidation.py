@@ -11,31 +11,24 @@ import numpy as np
 import caffe_utils as ut
 import argparse
 
-def runCaffeOnModel(NN, net, data, masks, iteration, show_iter=25):
-    # get just elements from the validation set
-    val_idx = []
-    for i in range(len(data)):
-        if (not data[i]['isValidation']):
-			continue
-        val_idx.append(i)
-
-    loss = np.zeros(len(val_idx))
-    err  = np.zeros(len(val_idx))
-    
-    for i in range(len(val_idx)):
-        if (np.mod(i, show_iter) == 0):
-            print 'Model %r, Iteration %d out of %d' % (iteration, i+1, len(val_idx))
-            
-        curr_data = data[val_idx[i]]
+def preprocessImages(NN, data, batch_size, batch_imgch, num_channels, masks):
+    batch_info = np.empty((batch_size, 6),dtype=int)
+    for b in range(batch_size):
+        if (batch_size > 1):
+            curr_data = data[b]
+        else:
+            curr_data = data
+        
         img = ut.cv2.imread(curr_data['img_paths'])
         joints = np.array(curr_data['joint_self'])
         joints = ut.removeZ(joints)
-        gt = joints.copy()
-    
+        
         center = ut.getCenterJoint(joints)
         img_width = img.shape[1]
         img_height = img.shape[0]
+        batch_info[b,:2] = img.shape[:2]
         box_points = ut.getBoundingBox(joints, center, NN['offset'], img_width, img_height)
+        batch_info[b,2:] = box_points
         
         # manipulate image and joints for caffe
         (img_croppad, joints) = ut.cropImage(img, box_points, joints)
@@ -45,10 +38,8 @@ def runCaffeOnModel(NN, net, data, masks, iteration, show_iter=25):
         
         # generate labels and center channel
         input_size = NN['inputSize']
-        labels = ut.generateHeatMaps(ut.filterJoints(joints),  NN['outputSize'], NN['sigma'])
         center_channel = ut.generateGaussian(NN['sigma_center'], input_size, [input_size/2, input_size/2])
         
-        num_channels = ut.getNumChannelsLayer(net, 'data')
         if (num_channels == 4):
             imgch = np.concatenate((resizedImage, center_channel[:,:,np.newaxis]), axis=2)
         else:
@@ -60,23 +51,82 @@ def runCaffeOnModel(NN, net, data, masks, iteration, show_iter=25):
                                                  curr_data['annolist_index'], camera,
                                                  action, person)
             imgch = np.concatenate((resizedImage, center_channel[:,:,np.newaxis], metadata_ch), axis=2)
-
+        
         imgch = np.transpose(imgch, (2, 0, 1))
-        ut.netForward(net, imgch)
-        
-        # get results
-        layer_name = 'Mconv5_stage6_new'
-        out = ut.getOutputLayer(net, layer_name)
-    
-        heatMaps = ut.restoreSize(out, img.shape[:2], box_points)
+        batch_imgch[b] = imgch
+    return (batch_imgch, batch_info)
+
+def postprocessHeatmaps(NN, batch_out, batch_data, batch_info, batch_size):
+    loss = np.zeros(batch_size)
+    err  = np.zeros(batch_size)
+    for b in range(batch_size):
+        if (batch_size > 1):
+            curr_data = batch_data[b]
+        else:
+            curr_data = batch_data
+        out = batch_out[b]
+        heatMaps = ut.restoreSize(out, batch_info[b,:2], batch_info[b,2:])
         predictions = ut.findPredictions(NN['njoints'], heatMaps)
+        gt = ut.filterJoints(ut.removeZ(curr_data['joint_self']))
+        err[b] = ut.computeError(gt, predictions)
+        labels = ut.generateHeatMaps(gt,  NN['outputSize'], NN['sigma'])
+        labels = ut.restoreSize(labels, batch_info[b,:2], batch_info[b,2:])
+        diff = np.subtract(heatMaps, labels).flatten()
+        loss[b] = np.dot(diff,diff)/(NN['outputSize']*2*(NN['njoints']+1))
+    return (err, loss)
+
+def runCaffeOnModel(NN, net, data, masks, iteration, show_iter=25):
+    # get just elements from the validation set
+    val_idx = []
+    for i in range(len(data)):
+        if (not data[i]['isValidation']):
+			continue
+        val_idx.append(i)
+    num_elem = len(val_idx)
+    loss = np.zeros(num_elem)
+    err  = np.zeros(num_elem)
+    
+    num_channels = ut.getNumChannelsLayer(net,'data')
+    batch_size = ut.getBatchSizeLayer(net, 'data')
+    p = 0
+    i = 0
+    while (i < num_elem):
+        # TODO: not working show itertion
+        # TODO: test why res is different
+        if (np.mod(p, show_iter) == 0):
+            print 'Model %r, Frame %d out of %d' % (iteration, i+1, len(val_idx))
+            
+        batch_imgch = np.empty((batch_size, num_channels, NN['inputSize'], NN['inputSize']))
+        curr_batch_size = batch_size
+        if ((i + batch_size - 1) > num_elem):
+            # consider not perfect division of dataset size and batch_size
+            curr_batch_size = num_elem - i - 1
         
-        gt = ut.filterJoints(gt)
-        err[i] = ut.computeError(gt, predictions)
-        labels = ut.restoreSize(labels, img.shape[:2], box_points)
-        diff = np.subtract(heatMaps,labels).flatten()
-        loss[i] = np.dot(diff,diff)/(NN['outputSize']*2*(NN['njoints']+1))
+        if (curr_batch_size > 0):
+            batch_data = data[val_idx[i:i+curr_batch_size]]
+            (batch_imgch, batch_info) = preprocessImages(NN, batch_data, curr_batch_size,
+                                                         batch_imgch, num_channels, masks)
+        else:
+            batch_data = data[val_idx[i]]
+            (batch_imgch, batch_info) = preprocessImages(NN, batch_data, 1,
+                                                         batch_imgch, num_channels, masks)
+    
+        ut.netForward(net, batch_imgch)
+        layer_name = 'Mconv5_stage6_new'
+        batch_out = ut.getOutputLayer(net, layer_name)
         
+        if (curr_batch_size > 0):
+            (b_err, b_loss) = postprocessHeatmaps(NN, batch_out, batch_data, batch_info, curr_batch_size)
+            loss[i:i+curr_batch_size] = b_loss
+            err[i:i+curr_batch_size] = b_err
+        else:
+            (b_err, b_loss) = postprocessHeatmaps(NN, batch_out, batch_data, batch_info, 1)
+            loss[i] = b_loss
+            err[i] = b_err
+            
+        i += batch_size
+        p += 1
+    
     val = {'iteration':iteration, 'mpjpe':err.mean(), 'loss':loss.mean()}
     return val    
 
@@ -190,6 +240,4 @@ def main():
 if __name__ == '__main__':
     main()
 
-#results = open('/home/denitome/Libraries/caffe_cpm/models/cpm_architecture/prototxt/caffemodel/manifold_samearch3/to_evaluate/validation0.json')
-#results = json.load(results)
-#plotResults(results)
+

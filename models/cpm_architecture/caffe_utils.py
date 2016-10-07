@@ -165,6 +165,9 @@ def resizeImage(image, new_size, joints=False):
 def getNumChannelsLayer(net, layer_name):
     return net.blobs[layer_name].channels
 
+def getBatchSizeLayer(net, layer_name):
+    return net.blobs[layer_name].num
+
 def netForward(net, imgch):
     """Run the model with the given input"""
     net.blobs['data'].data[...] = imgch
@@ -172,7 +175,9 @@ def netForward(net, imgch):
 
 def getOutputLayer(net, layer_name):
     """Get output of layer_name layer"""
-    return net.blobs.get(layer_name).data[0]
+    if (net.blobs.get(layer_name).data.shape[0] == 1):
+        return net.blobs.get(layer_name).data[0]
+    return net.blobs.get(layer_name).data
     
 def restoreSize(channels, channels_size, box_points):
     """Given the channel, it resize and place the channel in the right position
@@ -241,6 +246,8 @@ def filterJoints(joints):
     """From the whole set of joints it removes those that are not used in 
     the error computation.
     Joints is in the format [[x,y],[x,y]...]"""
+    if not checkJointsNonLinearised(joints):
+        joints = xyJoints(joints)
     joints_idx = [0,1,2,3,6,7,8,12,13,14,15,17,18,19,25,26,27]
     new_joints = joints[joints_idx]
     return np.array(new_joints)
@@ -308,7 +315,7 @@ def loadJsonFile(json_file):
     """Load json file"""
     with open(json_file) as data_file:
         data_this = json.load(data_file)
-        data = data_this['root']
+        data = np.array(data_this['root'])
         return (data, len(data))
 
 def getCaffeCpm():
