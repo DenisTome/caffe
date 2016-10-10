@@ -11,7 +11,8 @@ import argparse
 import re
 
 def preprocessImages(NN, data, batch_size, batch_imgch, num_channels):
-    batch_info = np.empty((batch_size, 6),dtype=int)
+    batch_info = np.empty((batch_size, 6), dtype=int)
+    frame_nums = np.empty(batch_size, dtype=int)
     for b in range(batch_size):
         if (batch_size > 1):
             curr_data = data[b]
@@ -50,7 +51,8 @@ def preprocessImages(NN, data, batch_size, batch_imgch, num_channels):
         
         imgch = np.transpose(imgch, (2, 0, 1))
         batch_imgch[b] = imgch
-    return (batch_imgch, batch_info)
+        frame_nums[b] = fno
+    return (batch_imgch, batch_info, frame_nums)
     
 def postprocessHeatmaps(NN, batch_out, batch_data, batch_info, batch_size):
     pred = np.zeros((batch_size, NN['njoints']*2))
@@ -68,7 +70,7 @@ def postprocessHeatmaps(NN, batch_out, batch_data, batch_info, batch_size):
         err[b] = ut.computeError(gt, predictions)
     return (pred, err)
 
-def executeOnTestSet(NN, net, data, num_elem, offset=0, show_iter=20):
+def executeOnTestSet(NN, net, data, num_elem, show_iter=20):
     preds  = np.empty((num_elem, NN['njoints']*2))
     errors = np.zeros(num_elem)
     frame_num = np.zeros(num_elem)
@@ -88,12 +90,12 @@ def executeOnTestSet(NN, net, data, num_elem, offset=0, show_iter=20):
         
         if (curr_batch_size > 0):
             batch_data = data[i:i+curr_batch_size]
-            (batch_imgch, batch_info) = preprocessImages(NN, batch_data, curr_batch_size,
-                                                         batch_imgch, num_channels)
+            (batch_imgch, batch_info, b_fno) = preprocessImages(NN, batch_data, curr_batch_size,
+                                                                batch_imgch, num_channels)
         else:
             batch_data = data[i]
-            (batch_imgch, batch_info) = preprocessImages(NN, batch_data, 1,
-                                                         batch_imgch, num_channels)
+            (batch_imgch, batch_info, b_fno) = preprocessImages(NN, batch_data, 1,
+                                                                batch_imgch, num_channels)
                                                          
         ut.netForward(net, batch_imgch)
         layer_name = 'Mconv5_stage6_new'
@@ -103,12 +105,12 @@ def executeOnTestSet(NN, net, data, num_elem, offset=0, show_iter=20):
             (b_preds, b_err) = postprocessHeatmaps(NN, batch_out, batch_data, batch_info, curr_batch_size)
             preds[i:i+curr_batch_size] = b_preds
             errors[i:i+curr_batch_size] = b_err
-            frame_num[i:i+curr_batch_size] = i + offset
+            frame_num[i:i+curr_batch_size] = b_fno
         else:
             (b_preds, b_err) = postprocessHeatmaps(NN, batch_out, batch_data, batch_info, 1)
             preds[i] = b_preds
             errors[i] = b_err
-            frame_num[i] = i + offset
+            frame_num[i] = b_fno
         i += batch_size
         p += 1
             
@@ -142,7 +144,7 @@ def checkFilesExistance(prototxt, caffemodel):
         raise Exception("Caffemodel file not found at the given path: %r" % caffemodel)
 
 def getNameOutputFile(caffemodel):
-    output_file = re.sub('.caffemodel', '_predictions.mat', caffemodel)
+    output_file = re.sub('\.caffemodel', '_predictions.mat', caffemodel)
     return output_file
 
 def main():
@@ -177,7 +179,7 @@ def main():
     offset_data = 0                                             # for not perfect divisions
     offset = elems_per_part*(int(args.run_part)-1)              # depending the part we are running
     if (args.run_part == args.num_parts):
-        offset_data = num_elem - elems_per_part*int(args.num_part)
+        offset_data = num_elem - elems_per_part*int(args.num_parts)
     idx_part = range(offset, offset + elems_per_part + offset_data)
     
     # Set output file path
@@ -192,38 +194,17 @@ def main():
         return
     
     # run model on test set
-    (preds, errors, frame_num) = executeOnTestSet(NN, net, data[idx_part], elems_per_part, offset)
+    (preds, errors, frame_num) = executeOnTestSet(NN, net, data[idx_part], elems_per_part)
     print 'Mean error on the test set: %r' % errors.mean()
     
     # save results
-    if (args.num_part > 1):
-        output_file += '/predictions_part%d.mat' % (int(args.run_part))
+    if (args.num_parts > 1):
+        output_file = re.sub('\.caffemodel', '_predictions_part', args.caffemodel)
+        output_file += '%d.mat' % (int(args.run_part))
     ut.sio.savemat(output_file, {'preds':preds,'errors':errors,'frame_num':frame_num})
 
-#if __name__ == '__main__':
-#    main()
-
-# TODO: test it again
-
-NN = ut.load_configuration(gpu=True)
-ut.setCaffeMode(NN['GPU'])
-json_file = ut.getCaffeCpm() + '/jsonDatasets/H36M_annotations_testSet.json'
-caffemodel = ut.getCaffeCpm() + '/prototxt/caffemodel/manifold_samearch3/pose_iter_110000.caffemodel'
-prototxt = ut.getCaffeCpm() + '/prototxt/pose_deploy.prototxt'
-net = ut.loadNetFromPath(caffemodel, prototxt)
-(data, num_elem) = ut.loadJsonFile(json_file)
-output_file = '/home/denitome/Dekstop/tmp.mat'
-idx_part = range(0, 35)
-(preds, errors, frame_num) = executeOnTestSet(NN, net, data[idx_part], 35, 0)
-
-
-
-
-
-
-
-
-
+if __name__ == '__main__':
+    main()
 
 
 
