@@ -183,11 +183,10 @@ def restoreSize(channels, channels_size, box_points):
     """Given the channel, it resize and place the channel in the right position
     in order to have a final estimation in the original image coordinate system.
     Channel has the format (c x w x h) """
+    assert(channels.ndim == 3)
     num_channels = channels.shape[0]
     channels = channels.transpose(1,2,0)
-#    new_img = imresize(channels, box_points[2],box_points[3])
     new_img = cv2.resize(channels, (box_points[2],box_points[3]), interpolation = cv2.INTER_LANCZOS4)
-#    new_img = cv2.resize(channels, (box_points[2],box_points[3]), interpolation = cv2.INTER_CUBIC)
 
     reecreated_img = np.zeros((channels_size[0], channels_size[1], num_channels))
     reecreated_img[box_points[1]:box_points[1]+box_points[3],box_points[0]:box_points[0]+box_points[2]] = new_img
@@ -231,6 +230,8 @@ def xyJoints(linearisedJoints):
     the [[x,y],[x,y]...] format"""
     num_elems = len(np.array(linearisedJoints).flatten())
     assert(num_elems >= (17*2))
+    if (type(linearisedJoints) == list):
+        linearisedJoints = np.array(linearisedJoints)
     xy = linearisedJoints.reshape((num_elems/2, 2))
     return xy
 

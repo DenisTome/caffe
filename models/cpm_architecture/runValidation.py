@@ -98,9 +98,9 @@ def runCaffeOnModel(NN, net, data, masks, iteration, show_iter=25):
             
         batch_imgch = np.empty((batch_size, num_channels, NN['inputSize'], NN['inputSize']))
         curr_batch_size = batch_size
-        if ((i + batch_size - 1) > num_elem):
+        if ((i + batch_size) >= num_elem):
             # consider not perfect division of dataset size and batch_size
-            curr_batch_size = num_elem - i - 1
+            curr_batch_size = num_elem - i
         
         if (curr_batch_size > 0):
             batch_data = data[val_idx[i:i+curr_batch_size]]

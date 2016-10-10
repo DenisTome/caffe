@@ -10,60 +10,108 @@ import caffe_utils as ut
 import argparse
 import re
 
-def predictionsFromFrame(NN, net, curr_data):
-    # read data
-    img = ut.cv2.imread(curr_data['img_paths'])
-    joints = np.array(curr_data['joint_self'])
-    
-    center = ut.getCenterJoint(joints)
-    img_width = img.shape[1]
-    img_height = img.shape[0]
-    box_points = ut.getBoundingBox(joints, center, NN['offset'], img_width, img_height)
-    
-    # crop around person
-    img_croppad = ut.cropImage(img, box_points)
-    resizedImage = ut.resizeImage(img_croppad, NN['inputSize'])
-    resizedImage = np.divide(resizedImage, float(256))
-    resizedImage = np.subtract(resizedImage, 0.5)
-    
-    sigma = NN['sigma_center']
-    input_size = NN['inputSize']
-    center_channel = ut.generateGaussian(sigma, input_size, [input_size/2, input_size/2])
-    
-    num_channels = ut.getNumChannelsLayer(net, 'data')
-    if (num_channels == 4):
-        imgch = np.concatenate((resizedImage, center_channel[:,:,np.newaxis]), axis=2)
-    else:
-        metadata_ch = ut.generateMaskChannel(NN['inputSize'],
-                                             curr_data['annolist_index'], curr_data['camera'],
-                                             curr_data['action'], curr_data['person'])
-        imgch = np.concatenate((resizedImage, center_channel[:,:,np.newaxis], metadata_ch), axis=2)
+def preprocessImages(NN, data, batch_size, batch_imgch, num_channels):
+    batch_info = np.empty((batch_size, 6),dtype=int)
+    for b in range(batch_size):
+        if (batch_size > 1):
+            curr_data = data[b]
+        else:
+            curr_data = data
         
-    imgch = np.transpose(imgch, (2, 0, 1))
-    ut.netForward(net, imgch)
+        img = ut.cv2.imread(curr_data['img_paths'])
+        joints = np.array(curr_data['joint_self'])
+        
+        center = ut.getCenterJoint(joints)
+        img_width = img.shape[1]
+        img_height = img.shape[0]
+        batch_info[b,:2] = img.shape[:2]
+        box_points = ut.getBoundingBox(joints, center, NN['offset'], img_width, img_height)
+        batch_info[b,2:] = box_points
+        
+        # manipulate image and joints for caffe
+        (img_croppad, joints) = ut.cropImage(img, box_points, joints)
+        (resizedImage, joints) = ut.resizeImage(img_croppad, NN['inputSize'], joints)
+        resizedImage = np.divide(resizedImage, float(256))
+        resizedImage = np.subtract(resizedImage, 0.5)
+        
+        # generate labels and center channel
+        input_size = NN['inputSize']
+        center_channel = ut.generateGaussian(NN['sigma_center'], input_size, [input_size/2, input_size/2])
+        
+        if (num_channels == 4):
+            imgch = np.concatenate((resizedImage, center_channel[:,:,np.newaxis]), axis=2)
+        else:
+            fno = int(curr_data['annolist_index'])
+            camera = curr_data['camera']
+            action = curr_data['action']
+            person = curr_data['person']
+            metadata_ch = ut.generateMaskChannel(NN['inputSize'], fno, camera, action, person)
+            imgch = np.concatenate((resizedImage, center_channel[:,:,np.newaxis], metadata_ch), axis=2)
+        
+        imgch = np.transpose(imgch, (2, 0, 1))
+        batch_imgch[b] = imgch
+    return (batch_imgch, batch_info)
     
-    layer_name = 'Mconv5_stage6_new'
-    out = ut.getOutputLayer(net, layer_name)
-    
-    heatMaps = ut.restoreSize(out, img.shape[:2], box_points)
-    predictions = ut.findPredictions(NN['njoints'], heatMaps)
-    # prob not here
-    gt = ut.filterJoints(joints)
-    err = np.sqrt(np.power(gt-predictions,2).sum(1)).mean()
-    return (predictions, err)
+def postprocessHeatmaps(NN, batch_out, batch_data, batch_info, batch_size):
+    pred = np.zeros((batch_size, NN['njoints']*2))
+    err  = np.zeros(batch_size)
+    for b in range(batch_size):
+        if (batch_size > 1):
+            curr_data = batch_data[b]
+        else:
+            curr_data = batch_data
+        out = batch_out[b]
+        heatMaps = ut.restoreSize(out, batch_info[b,:2], batch_info[b,2:])
+        predictions = ut.findPredictions(NN['njoints'], heatMaps)
+        pred[b] = predictions.flatten()
+        gt = ut.filterJoints(curr_data['joint_self'])
+        err[b] = ut.computeError(gt, predictions)
+    return (pred, err)
 
-def executeOnTestSet(NN, net, data, num_elem, offset=0, show_iter=50):
+def executeOnTestSet(NN, net, data, num_elem, offset=0, show_iter=20):
     preds  = np.empty((num_elem, NN['njoints']*2))
     errors = np.zeros(num_elem)
     frame_num = np.zeros(num_elem)
-    for fno in range(num_elem):
-        if not np.mod(fno, show_iter):
-            print 'Frame %r of %r' % (fno, num_elem)
-        curr_data = data[fno]
-        (curr_pred, err) = predictionsFromFrame(NN, net, curr_data)
-        preds[fno] = curr_pred.flatten()
-        errors[fno] = err
-        frame_num[fno] = fno + offset
+    
+    num_channels = ut.getNumChannelsLayer(net,'data')
+    batch_size = ut.getBatchSizeLayer(net, 'data')
+    p = 0
+    i = 0
+    while (i < num_elem):
+        if (np.mod(p, show_iter) == 0):
+            print 'Frame %d out of %d' % (i+1, num_elem)
+        batch_imgch = np.empty((batch_size, num_channels, NN['inputSize'], NN['inputSize']))
+        curr_batch_size = batch_size
+        if ((i + batch_size) >= num_elem):
+            # consider not perfect division of dataset size and batch_size
+            curr_batch_size = num_elem - i
+        
+        if (curr_batch_size > 0):
+            batch_data = data[i:i+curr_batch_size]
+            (batch_imgch, batch_info) = preprocessImages(NN, batch_data, curr_batch_size,
+                                                         batch_imgch, num_channels)
+        else:
+            batch_data = data[i]
+            (batch_imgch, batch_info) = preprocessImages(NN, batch_data, 1,
+                                                         batch_imgch, num_channels)
+                                                         
+        ut.netForward(net, batch_imgch)
+        layer_name = 'Mconv5_stage6_new'
+        batch_out = ut.getOutputLayer(net, layer_name)
+        
+        if (curr_batch_size > 0):
+            (b_preds, b_err) = postprocessHeatmaps(NN, batch_out, batch_data, batch_info, curr_batch_size)
+            preds[i:i+curr_batch_size] = b_preds
+            errors[i:i+curr_batch_size] = b_err
+            frame_num[i:i+curr_batch_size] = i + offset
+        else:
+            (b_preds, b_err) = postprocessHeatmaps(NN, batch_out, batch_data, batch_info, 1)
+            preds[i] = b_preds
+            errors[i] = b_err
+            frame_num[i] = i + offset
+        i += batch_size
+        p += 1
+            
     return (preds, errors, frame_num)
 
 def getIter(item):
@@ -126,8 +174,8 @@ def main():
     
     # Execution in multiple machines
     elems_per_part = int(np.floor(num_elem/int(args.num_parts)))
-    offset_data = 0 # for not perfect divisions
-    offset = elems_per_part*(int(args.run_part)-1)
+    offset_data = 0                                             # for not perfect divisions
+    offset = elems_per_part*(int(args.run_part)-1)              # depending the part we are running
     if (args.run_part == args.num_parts):
         offset_data = num_elem - elems_per_part*int(args.num_part)
     idx_part = range(offset, offset + elems_per_part + offset_data)
@@ -157,6 +205,16 @@ def main():
 
 # TODO: test it again
 
+NN = ut.load_configuration(gpu=True)
+ut.setCaffeMode(NN['GPU'])
+json_file = ut.getCaffeCpm() + '/jsonDatasets/H36M_annotations_testSet.json'
+caffemodel = ut.getCaffeCpm() + '/prototxt/caffemodel/manifold_samearch3/pose_iter_110000.caffemodel'
+prototxt = ut.getCaffeCpm() + '/prototxt/pose_deploy.prototxt'
+net = ut.loadNetFromPath(caffemodel, prototxt)
+(data, num_elem) = ut.loadJsonFile(json_file)
+output_file = '/home/denitome/Dekstop/tmp.mat'
+idx_part = range(0, 35)
+(preds, errors, frame_num) = executeOnTestSet(NN, net, data[idx_part], 35, 0)
 
 
 

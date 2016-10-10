@@ -226,7 +226,7 @@ def main():
     val_filename = []
     stn_lrm = 1e-4
     nstages = 6
-    merge = [90500, 0]
+    merge = [108495, 0]
     finetune_iter = 50000
 #    merge = [0]
     train, val, base_lr, stepsize = parse_log(filename[0], val_filename)

@@ -1,5 +1,5 @@
 input: "data"
-input_dim: 1
+input_dim: 18
 input_dim: 5
 input_dim: 368
 input_dim: 368
