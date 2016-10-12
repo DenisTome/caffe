@@ -290,13 +290,17 @@ def plotHeatMaps(heatMaps, secondHeatMaps=[], title=False):
                 plotHeatMap(heatMaps[i], secondHeatMaps, title)
             plt.waitforbuttonpress()
 
-def plotImageJoints(image, joints):
+def plotImageJoints(image, joints, joints2=[]):
     """Plot the image and the joint positions"""
     img = image.copy()
     if not checkJointsNonLinearised(joints):
         joints = xyJoints(np.array(joints))
+    if (len(joints2) != 0):
+        joints2 = xyJoints(np.array(joints2).flatten())
     for j in range(joints.shape[0]):
-        cv2.circle(img, (int(joints[j][0]), int(joints[j][1])), 3, (0, 255, 255), -1)
+        cv2.circle(img, (int(joints[j][0]), int(joints[j][1])), 3, (255, 0, 0), -1)
+        if (len(joints2) != 0):
+            cv2.circle(img, (int(joints2[j][0]), int(joints2[j][1])), 3, (0, 0, 255), -1)
     plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     
 def plotJoints(joints, joints2=[]):

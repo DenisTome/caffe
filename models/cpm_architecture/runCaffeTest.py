@@ -117,7 +117,7 @@ def executeOnTestSet(NN, net, data, num_elem, show_iter=20):
     return (preds, errors, frame_num)
 
 def getIter(item):
-    regex_iteration = re.compile('predictions_part(\d+).mat')
+    regex_iteration = re.compile('_predictions_part(\d+).mat')
     iter_match = regex_iteration.search(item)
     return int(iter_match.group(1))
 
@@ -133,8 +133,8 @@ def mergeParts(NN, dir_path, num_elem, elems_per_part):
         curr_data_size = curr_data['preds'].shape[0]
         start_idx = (part-1)*elems_per_part
         preds[start_idx:start_idx+curr_data_size] = curr_data['preds']
-        errors[start_idx:start_idx+curr_data_size] = curr_data['errors']
-        frame_num[start_idx:start_idx+curr_data_size] = curr_data['frame_num']
+        errors[start_idx:start_idx+curr_data_size] = curr_data['errors'].flatten()
+        frame_num[start_idx:start_idx+curr_data_size] = curr_data['frame_num'].flatten()
     return (preds, errors, frame_num)
 
 def checkFilesExistance(prototxt, caffemodel):
@@ -191,6 +191,7 @@ def main():
     if args.merge_parts_dir is not None:
         (preds, errors, frame_num) = mergeParts(NN, args.merge_parts_dir, num_elem, elems_per_part)
         ut.sio.savemat(output_file, {'preds':preds,'errors':errors,'frame_num':frame_num})
+        print 'mean error: %r' % errors.mean()
         return
     
     # run model on test set
@@ -205,13 +206,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
-
-
-
-
