@@ -1,20 +1,23 @@
 # Caffe (CPM Data Layer)
+CPM architecture adapted in order to use the **Human3.6M** dataset's set of joints with the implementation of the manifold layer.
+The architecture includes the manifold layer in stages: 4,5.
 
-## Files changed:
-0. data_reader.hpp
-0. data_transformer.hpp
-0. data_reader.cpp
-0. data_transformer.cpp
+## Data dependencies
+0. */data/Human3.6M/Data/* has to contain all the subject directories for testing and training the model
+0. *models/cpm_architecture/jsonDatasets* contains the files for training and testing
+   * *H36M_annotations.json* (optional for testing)
+   * *H36M_annotations_testSet.json*
+   * *H36M_masks.mat*
+0. *models/cpm_architecture/lmdb* contains the train lmdb database used for training the model (optional for testing)
 
-## Differences with new dataset
-0. no need for nop (number other people)
-0. initially no need for data manipulation (we already have a lot of data)
-0. change the genJSON.py to include also 3D joint positions, as well as 2D joint positions
-0. generate individual images from the train-set (subjects: 1,5,6,7,8)
-
-## TODOs
-0. copy segmentation, upright_cam, upright_fast.so and ceres files into the $CAFFE_HOME_CPM/python/manifold directory
-0. copy camera_param.mat and train_basis_allactions.mat files into the $CAFFE_HOME_CPM/models/cpm_architecture/data directory
+## Python dependencies
+<pre>
+sudo pip install protobuf
+sudo pip install scikit-image
+sudo pip install matplotlib
+sudo apt-get install python-tk
+sudo pip install mpldatacursor
+</pre>
 
 ## Fine-tuning a CNN for detection with Caffe
 <pre>
