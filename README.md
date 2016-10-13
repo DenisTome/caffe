@@ -4,6 +4,8 @@ The architecture includes the manifold layer in stages: 4,5.
 
 ## Data dependencies
 0. */data/Human3.6M/Data/* has to contain all the subject directories for testing and training the model
+0. *models/cpm_architecture/data* contains the learned model for the manifold layer
+0. *python/manifold/* contains all the dependencies for the manifold layer
 0. *models/cpm_architecture/jsonDatasets* contains the files for training and testing
    * *H36M_annotations.json* (optional for testing)
    * *H36M_annotations_testSet.json*
@@ -17,6 +19,7 @@ sudo pip install scikit-image
 sudo pip install matplotlib
 sudo apt-get install python-tk
 sudo pip install mpldatacursor
+sudo apt-get install python-yaml
 </pre>
 
 ## Fine-tuning a CNN for detection with Caffe
