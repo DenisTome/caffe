@@ -38,6 +38,8 @@ def python_param_net_file():
         return f.name
 
 
+@unittest.skipIf('Python' not in caffe.layer_type_list(),
+    'Caffe built without Python layer support')
 class TestLayerWithParam(unittest.TestCase):
     def setUp(self):
         net_file = python_param_net_file()
@@ -57,3 +59,5 @@ class TestLayerWithParam(unittest.TestCase):
         self.net.backward()
         for y in self.net.blobs['data'].diff.flat:
             self.assertEqual(y, 2 * 10 * x)
+
+unittest.main()

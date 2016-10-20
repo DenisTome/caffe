@@ -75,7 +75,7 @@ def postprocessHeatmaps(NN, batch_out, batch_data, batch_info, batch_size):
         loss[b] = np.dot(diff,diff)/(NN['outputSize']*2*(NN['njoints']+1))
     return (err, loss)
 
-def runCaffeOnModel(NN, net, data, masks, iteration, show_iter=25):
+def runCaffeOnModel(NN, net, data, masks, iteration, show_iter=10):
     # get just elements from the validation set
     val_idx = []
     for i in range(len(data)):

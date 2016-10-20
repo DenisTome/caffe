@@ -1,4 +1,4 @@
-net: "models/cpm_architecture/prototxt/pose_train_test.prototxt"
+net: "/tmp.test.prototxt"
 #test_iter: 60972
 #test_intervall: 5000
 base_lr: 0.000500
@@ -10,5 +10,5 @@ gamma: 0.333
 display: 5
 max_iter: 172980
 snapshot: 500
-snapshot_prefix: "models/cpm_architecture/prototxt/caffemodel/manifold_samearch3/pose"
+snapshot_prefix: "models/cpm_architecture/prototxt/caffemodel/manifold_diffarch1/pose"
 solver_mode: GPU

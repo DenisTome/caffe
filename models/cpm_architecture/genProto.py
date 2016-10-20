@@ -70,9 +70,9 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
                 lr_m = 1 #1e-2
                 decay_mult = 1
             
-            if (stage <= 4):
-                lr_m = 0
-                decay_mult = 0
+#            if (stage <= 4):
+#                lr_m = 0
+#                decay_mult = 0
             # additional for python layer
 #            if (stage > 1 and state != 'image' and (conv_counter == 1)):
 #                conv_name = '%s_mf' % conv_name
@@ -99,8 +99,8 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
         elif layername[l] == 'M':
             last_manifold = 'manifolds_stage%d' % stage
             debug_mode = 0
-            if (stage >= 4):
-                manifold_current_stage = True
+#            if (stage >= 4):
+            manifold_current_stage = True
             # TODO: change it back
 #            if stage == 4:
 #                debug_mode = 4
@@ -228,7 +228,7 @@ if __name__ == "__main__":
                         snapshot=snapshot, gpu=True)
     ### END
 
-    d_caffemodel = '%s/caffemodel/manifold_samearch3' % directory # the place you want to store your caffemodel
+    d_caffemodel = '%s/caffemodel/manifold_diffarch1' % directory # the place you want to store your caffemodel
 
     # num_parts and np_in_lmdb are two parameters that are used inside the framework to move from one
     # dataset definition to another. Num_parts is the number of parts we want to have, while

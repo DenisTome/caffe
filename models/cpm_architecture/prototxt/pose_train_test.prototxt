@@ -66,11 +66,11 @@ layer {
   bottom: "image"
   top: "conv1_stage1"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -109,11 +109,11 @@ layer {
   bottom: "pool1_stage1"
   top: "conv2_stage1"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -152,11 +152,11 @@ layer {
   bottom: "pool2_stage1"
   top: "conv3_stage1"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -195,11 +195,11 @@ layer {
   bottom: "pool3_stage1"
   top: "conv4_stage1"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -227,11 +227,11 @@ layer {
   bottom: "conv4_stage1"
   top: "conv5_stage1"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -268,11 +268,11 @@ layer {
   bottom: "conv5_stage1"
   top: "conv6_stage1"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -309,11 +309,11 @@ layer {
   bottom: "conv6_stage1"
   top: "conv7_stage1_new"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 1
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 2
     decay_mult: 0
   }
   convolution_param {
@@ -330,6 +330,18 @@ layer {
   }
 }
 layer {
+  name: "manifolds_stage1"
+  type: "Python"
+  bottom: "conv7_stage1_new"
+  bottom: "metadata"
+  top: "manifolds_stage1"
+  python_param {
+    module: "newheatmaps"
+    layer: "MyCustomLayer"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1, \"Lambda\": 0.050 }"
+  }
+}
+layer {
   name: "loss_stage1"
   type: "EuclideanLoss"
   bottom: "conv7_stage1_new"
@@ -342,11 +354,11 @@ layer {
   bottom: "image"
   top: "conv1_stage2"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -385,11 +397,11 @@ layer {
   bottom: "pool1_stage2"
   top: "conv2_stage2"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -428,11 +440,11 @@ layer {
   bottom: "pool2_stage2"
   top: "conv3_stage2"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -471,11 +483,11 @@ layer {
   bottom: "pool3_stage2"
   top: "conv4_stage2"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -501,7 +513,7 @@ layer {
   name: "concat_stage2"
   type: "Concat"
   bottom: "conv4_stage2"
-  bottom: "conv7_stage1_new"
+  bottom: "manifolds_stage1"
   bottom: "pool_center_lower"
   top: "concat_stage2"
   concat_param {
@@ -514,11 +526,11 @@ layer {
   bottom: "concat_stage2"
   top: "Mconv1_stage2_new"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 1
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 2
     decay_mult: 0
   }
   convolution_param {
@@ -546,11 +558,11 @@ layer {
   bottom: "Mconv1_stage2_new"
   top: "Mconv2_stage2"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -578,11 +590,11 @@ layer {
   bottom: "Mconv2_stage2"
   top: "Mconv3_stage2"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -610,11 +622,11 @@ layer {
   bottom: "Mconv3_stage2"
   top: "Mconv4_stage2"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -642,11 +654,11 @@ layer {
   bottom: "Mconv4_stage2"
   top: "Mconv5_stage2_new"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 1
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 2
     decay_mult: 0
   }
   convolution_param {
@@ -663,6 +675,18 @@ layer {
   }
 }
 layer {
+  name: "manifolds_stage2"
+  type: "Python"
+  bottom: "Mconv5_stage2_new"
+  bottom: "metadata"
+  top: "manifolds_stage2"
+  python_param {
+    module: "newheatmaps"
+    layer: "MyCustomLayer"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1, \"Lambda\": 0.050 }"
+  }
+}
+layer {
   name: "loss_stage2"
   type: "EuclideanLoss"
   bottom: "Mconv5_stage2_new"
@@ -675,11 +699,11 @@ layer {
   bottom: "pool3_stage2"
   top: "conv1_stage3"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -705,7 +729,7 @@ layer {
   name: "concat_stage3"
   type: "Concat"
   bottom: "conv1_stage3"
-  bottom: "Mconv5_stage2_new"
+  bottom: "manifolds_stage2"
   bottom: "pool_center_lower"
   top: "concat_stage3"
   concat_param {
@@ -718,11 +742,11 @@ layer {
   bottom: "concat_stage3"
   top: "Mconv1_stage3_new"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 1
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 2
     decay_mult: 0
   }
   convolution_param {
@@ -750,11 +774,11 @@ layer {
   bottom: "Mconv1_stage3_new"
   top: "Mconv2_stage3"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -782,11 +806,11 @@ layer {
   bottom: "Mconv2_stage3"
   top: "Mconv3_stage3"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -814,11 +838,11 @@ layer {
   bottom: "Mconv3_stage3"
   top: "Mconv4_stage3"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -846,11 +870,11 @@ layer {
   bottom: "Mconv4_stage3"
   top: "Mconv5_stage3_new"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 1
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 2
     decay_mult: 0
   }
   convolution_param {
@@ -867,6 +891,18 @@ layer {
   }
 }
 layer {
+  name: "manifolds_stage3"
+  type: "Python"
+  bottom: "Mconv5_stage3_new"
+  bottom: "metadata"
+  top: "manifolds_stage3"
+  python_param {
+    module: "newheatmaps"
+    layer: "MyCustomLayer"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1, \"Lambda\": 0.050 }"
+  }
+}
+layer {
   name: "loss_stage3"
   type: "EuclideanLoss"
   bottom: "Mconv5_stage3_new"
@@ -879,11 +915,11 @@ layer {
   bottom: "pool3_stage2"
   top: "conv1_stage4"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -909,7 +945,7 @@ layer {
   name: "concat_stage4"
   type: "Concat"
   bottom: "conv1_stage4"
-  bottom: "Mconv5_stage3_new"
+  bottom: "manifolds_stage3"
   bottom: "pool_center_lower"
   top: "concat_stage4"
   concat_param {
@@ -922,11 +958,11 @@ layer {
   bottom: "concat_stage4"
   top: "Mconv1_stage4_new"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 1
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 2
     decay_mult: 0
   }
   convolution_param {
@@ -954,11 +990,11 @@ layer {
   bottom: "Mconv1_stage4_new"
   top: "Mconv2_stage4"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -986,11 +1022,11 @@ layer {
   bottom: "Mconv2_stage4"
   top: "Mconv3_stage4"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -1018,11 +1054,11 @@ layer {
   bottom: "Mconv3_stage4"
   top: "Mconv4_stage4"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 0.001
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 0.002
     decay_mult: 0
   }
   convolution_param {
@@ -1050,11 +1086,11 @@ layer {
   bottom: "Mconv4_stage4"
   top: "Mconv5_stage4_new"
   param {
-    lr_mult: 0
-    decay_mult: 0
+    lr_mult: 1
+    decay_mult: 1
   }
   param {
-    lr_mult: 0
+    lr_mult: 2
     decay_mult: 0
   }
   convolution_param {

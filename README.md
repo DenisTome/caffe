@@ -2,6 +2,8 @@
 CPM architecture adapted in order to use the **Human3.6M** dataset's set of joints with the implementation of the manifold layer.
 The architecture includes the manifold layer in stages: 4,5.
 
+IN THIS VERSION RATHER THAN USING THE MANIFOLD LAYER JUST IN STAGE 4 AND 5 WE TRY TO USE IT ON ALL STAGES.
+
 ## Data dependencies
 0. */data/Human3.6M/Data/* has to contain all the subject directories for testing and training the model
 0. *models/cpm_architecture/data* contains the learned model for the manifold layer

@@ -138,3 +138,5 @@ class TestPythonLayer(unittest.TestCase):
         self.assertEqual(layer.blobs[0].data[0], 1)
 
         os.remove(net_file)
+
+unittest.main()

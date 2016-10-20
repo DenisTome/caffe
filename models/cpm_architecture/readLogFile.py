@@ -221,12 +221,13 @@ def plotData(train, val, nstages, main_title, avg_line = False, avg_batch_size =
 
 def main():
     #filename = ['prototxt/caffemodel/trial_5/log.txt']
-    filename = ['prototxt/log.txt','prototxt/log2.txt']
+    filename = ['prototxt/log2.txt','prototxt/log3.txt']
+#    filename = ['prototxt/log2.txt']
     #val_filename = ['prototxt/caffemodel/trial_5/validation.json']
     val_filename = []
     stn_lrm = 1e-4
     nstages = 6
-    merge = [108495, 0]
+    merge = [26500, 0]
     finetune_iter = 50000
 #    merge = [0]
     train, val, base_lr, stepsize = parse_log(filename[0], val_filename)
