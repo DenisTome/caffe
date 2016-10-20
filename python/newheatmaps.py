@@ -243,7 +243,7 @@ class MyCustomLayer(caffe.Layer):
     def normaliseHeatMap(self, heatMaps_old, heatMap):
         max_val = heatMap.max()
         max_before = heatMaps_old.max()
-        return (heatMap/max_val)*max_before
+        return (max_before/max_val)*heatMap
 
     def sumHeatMaps(self, heatMaps_old, heatMaps_new):
         out_heatMaps = np.zeros((self.num_channels, self.input_size, self.input_size))
@@ -262,8 +262,9 @@ class MyCustomLayer(caffe.Layer):
             (_, camera, _, _) = self.extractMetadata(metadata[b])
             # get new points
             (points, cov_matrices) = self.manifoldDataConversion(input_heatMaps[b], camera)
-            heatMaps[b] = self.sumHeatMaps(input_heatMaps[b], self.generateHeatMaps(points, cov_matrices))
-#            heatMaps[b] = self.generateHeatMaps(points, cov_matrices)
+            # DONE: change it back
+            # heatMaps[b] = self.sumHeatMaps(input_heatMaps[b], self.generateHeatMaps(points, cov_matrices))
+            heatMaps[b] = self.generateHeatMaps(points, cov_matrices)
             
             if (self.debug_mode):
                 for j in range(self.num_channels):
@@ -279,16 +280,10 @@ class MyCustomLayer(caffe.Layer):
                         plt.imsave(name,vis)
         
         top[0].data[...] = heatMaps
-        # TODO: check if this is needed
-#        self.diff[...] = input_heatMaps - heatMaps
-        # DONE: changing it back
-#        top[0].data[...] = input_heatMaps
-        #pass
     
     def backward(self, top, propagate_down, bottom):
         """Backward data in the learning phase. This layer does not propagate back information."""
-        bottom[0].diff[...] = np.zeros(bottom[0].data.shape)
-#        bottom[0].diff[...] = self.diff
-        #pass
+        pass
+        # bottom[0].diff[...] = np.zeros(bottom[0].data.shape)
         
         

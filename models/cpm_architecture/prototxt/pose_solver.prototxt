@@ -1,4 +1,4 @@
-net: "/tmp.test.prototxt"
+net: "models/cpm_architecture/prototxt/pose_train_test.prototxt"
 #test_iter: 60972
 #test_intervall: 5000
 base_lr: 0.000500

@@ -9,11 +9,6 @@ import caffe
 import os
 import numpy as np
 import yaml
-import matplotlib.pyplot as plt
-from scipy import ndimage
-import scipy.io as sio
-import sys
-import os
 
 class MergeHeatMaps(caffe.Layer):
     
@@ -22,7 +17,7 @@ class MergeHeatMaps(caffe.Layer):
         and for reading the parameters from the prototxt file.        
         """
         # extract data from prototxt
-        self.debug_mode = yaml.load(self.param_str)["debug_mode"]
+        # self.debug_mode = yaml.load(self.param_str)["debug_mode"]
         self.init = yaml.load(self.param_str)["init"]               # either zero or avg
         
         # get dimensionality
@@ -30,12 +25,19 @@ class MergeHeatMaps(caffe.Layer):
         self.num_channels = bottom[0].data.shape[1]
         self.input_size = bottom[0].data.shape[-1]
         
+#        # define weights
+#        self.blobs.add_blob(self.num_channels)
+#        if (self.init == 'zero'):
+#            self.blobs[0].data[...] = np.zeros(self.num_channels)
+#        else:
+#            self.blobs[0].data[...] = np.array([0.5]*self.num_channels)
+            
         # define weights
-        self.blobs.add_blob(self.num_channels)
+        self.blobs.add_blob(1)
         if (self.init == 'zero'):
-            self.blobs[0].data[...] = np.zeros(self.num_channels)
+            self.blobs[0].data[...] = 0
         else:
-            self.blobs[0].data[...] = np.array([0.5]*self.num_channels)
+            self.blobs[0].data[...] = 0.5
         
         # check input dimension
         if (len(bottom) != 2):
@@ -55,7 +57,7 @@ class MergeHeatMaps(caffe.Layer):
     def normaliseHeatMap(self, heatMaps_old, heatMap):
         max_val = heatMap.max()
         max_before = heatMaps_old.max()
-        return (heatMap/max_val)*max_before
+        return (max_before/max_val)*heatMap
 
     def forward(self, bottom, top):
         """Forward data in the architecture to the following layer."""
@@ -66,18 +68,20 @@ class MergeHeatMaps(caffe.Layer):
         input_heatMaps    = bottom[0].data[...]
         input_heatMaps_mf = bottom[1].data[...]
         weights = self.blobs[0].data[...]
-        heatMaps = np.zeros((self.batch_size, self.num_channels, self.input_size, self.input_size))
+        heatMaps = np.zeros((self.batch_size, self.num_channels, self.input_size, self.input_size),
+                            dtype = np.float32)
         
         # consider each image in the batch individually
         for b in range(self.batch_size):
             for c in range(self.num_channels):
-                heatMaps[b,c] = self.normaliseHeatMap(input_heatMaps, 
-                                                      weights[c]*input_heatMaps_mf[b,c] +
-                                                      (1-weights[c])*input_heatMaps[b,c])
+                heatMaps[b,c] = self.normaliseHeatMap(input_heatMaps[b,c], 
+                                                      weights*input_heatMaps_mf[b,c] +
+                                                      (1-weights)*input_heatMaps[b,c])
         top[0].data[...] = heatMaps
     
     def backward(self, top, propagate_down, bottom):
         """Backward data in the learning phase. This layer does not propagate back information."""
-        bottom[0].diff[...] = np.zeros(bottom[0].data.shape)
+        pass
+        # bottom[0].diff[...] = np.zeros(bottom[0].data.shape)
         
         

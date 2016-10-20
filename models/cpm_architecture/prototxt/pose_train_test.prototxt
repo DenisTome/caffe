@@ -342,6 +342,18 @@ layer {
   }
 }
 layer {
+  name: "merge_hm_stage1"
+  type: "Python"
+  bottom: "conv7_stage1_new"
+  bottom: "manifolds_stage1"
+  top: "merge_hm_stage1"
+  python_param {
+    module: "processheatmaps"
+    layer: "MergeHeatMaps"
+    param_str: "{\"init\": \'zero\'}"
+  }
+}
+layer {
   name: "loss_stage1"
   type: "EuclideanLoss"
   bottom: "conv7_stage1_new"
@@ -513,7 +525,7 @@ layer {
   name: "concat_stage2"
   type: "Concat"
   bottom: "conv4_stage2"
-  bottom: "manifolds_stage1"
+  bottom: "merge_hm_stage1"
   bottom: "pool_center_lower"
   top: "concat_stage2"
   concat_param {
@@ -687,6 +699,18 @@ layer {
   }
 }
 layer {
+  name: "merge_hm_stage2"
+  type: "Python"
+  bottom: "Mconv5_stage2_new"
+  bottom: "manifolds_stage2"
+  top: "merge_hm_stage2"
+  python_param {
+    module: "processheatmaps"
+    layer: "MergeHeatMaps"
+    param_str: "{\"init\": \'zero\'}"
+  }
+}
+layer {
   name: "loss_stage2"
   type: "EuclideanLoss"
   bottom: "Mconv5_stage2_new"
@@ -729,7 +753,7 @@ layer {
   name: "concat_stage3"
   type: "Concat"
   bottom: "conv1_stage3"
-  bottom: "manifolds_stage2"
+  bottom: "merge_hm_stage2"
   bottom: "pool_center_lower"
   top: "concat_stage3"
   concat_param {
@@ -903,6 +927,18 @@ layer {
   }
 }
 layer {
+  name: "merge_hm_stage3"
+  type: "Python"
+  bottom: "Mconv5_stage3_new"
+  bottom: "manifolds_stage3"
+  top: "merge_hm_stage3"
+  python_param {
+    module: "processheatmaps"
+    layer: "MergeHeatMaps"
+    param_str: "{\"init\": \'zero\'}"
+  }
+}
+layer {
   name: "loss_stage3"
   type: "EuclideanLoss"
   bottom: "Mconv5_stage3_new"
@@ -945,7 +981,7 @@ layer {
   name: "concat_stage4"
   type: "Concat"
   bottom: "conv1_stage4"
-  bottom: "manifolds_stage3"
+  bottom: "merge_hm_stage3"
   bottom: "pool_center_lower"
   top: "concat_stage4"
   concat_param {
@@ -1119,6 +1155,18 @@ layer {
   }
 }
 layer {
+  name: "merge_hm_stage4"
+  type: "Python"
+  bottom: "Mconv5_stage4_new"
+  bottom: "manifolds_stage4"
+  top: "merge_hm_stage4"
+  python_param {
+    module: "processheatmaps"
+    layer: "MergeHeatMaps"
+    param_str: "{\"init\": \'avg\'}"
+  }
+}
+layer {
   name: "loss_stage4"
   type: "EuclideanLoss"
   bottom: "Mconv5_stage4_new"
@@ -1161,7 +1209,7 @@ layer {
   name: "concat_stage5"
   type: "Concat"
   bottom: "conv1_stage5"
-  bottom: "manifolds_stage4"
+  bottom: "merge_hm_stage4"
   bottom: "pool_center_lower"
   top: "concat_stage5"
   concat_param {
@@ -1335,6 +1383,18 @@ layer {
   }
 }
 layer {
+  name: "merge_hm_stage5"
+  type: "Python"
+  bottom: "Mconv5_stage5_new"
+  bottom: "manifolds_stage5"
+  top: "merge_hm_stage5"
+  python_param {
+    module: "processheatmaps"
+    layer: "MergeHeatMaps"
+    param_str: "{\"init\": \'avg\'}"
+  }
+}
+layer {
   name: "loss_stage5"
   type: "EuclideanLoss"
   bottom: "Mconv5_stage5_new"
@@ -1377,7 +1437,7 @@ layer {
   name: "concat_stage6"
   type: "Concat"
   bottom: "conv1_stage6"
-  bottom: "manifolds_stage5"
+  bottom: "merge_hm_stage5"
   bottom: "pool_center_lower"
   top: "concat_stage6"
   concat_param {

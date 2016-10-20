@@ -178,6 +178,9 @@ def getOutputLayer(net, layer_name):
     if (net.blobs.get(layer_name).data.shape[0] == 1):
         return net.blobs.get(layer_name).data[0]
     return net.blobs.get(layer_name).data
+
+def getParamLayer(net, layer_name):
+    return net.params[layer_name][0].data
     
 def restoreSize(channels, channels_size, box_points):
     """Given the channel, it resize and place the channel in the right position

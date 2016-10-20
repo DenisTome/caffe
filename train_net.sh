@@ -28,5 +28,5 @@
 
 GLOG_logtostderr=1 build/tools/caffe train \
 -solver models/cpm_architecture/prototxt/pose_solver.prototxt \
--snapshot models/cpm_architecture/prototxt/caffemodel/manifold_diffarch1/pose_iter_26500.solverstate \
--gpu 0 2>&1 | tee models/cpm_architecture/prototxt/log3.txt
+-snapshot models/cpm_architecture/prototxt/caffemodel/manifold_diffarch1/pose_iter_54500.solverstate \
+-gpu 0 2>&1 | tee models/cpm_architecture/prototxt/log2.txt

@@ -45,11 +45,13 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
     stage = 1
     conv_counter = 1
     last_manifold = 'NONE'
+    last_merg = 'NONE'
     pool_counter = 1
     drop_counter = 1
     state = 'image' # can be image or fuse
     share_point = 0
     manifold_current_stage = False
+    merge_init_avg = False
     
     for l in range(0, len(layername)):
         decay_mult = 1
@@ -98,17 +100,25 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             pool_counter += 1
         elif layername[l] == 'M':
             last_manifold = 'manifolds_stage%d' % stage
+            last_merg = 'merge_hm_stage%d' % stage
             debug_mode = 0
 #            if (stage >= 4):
             manifold_current_stage = True
+            if (stage >= 4):
+                merge_init_avg = True
             # TODO: change it back
 #            if stage == 4:
 #                debug_mode = 4
             parameters = '{"njoints": 17,"sigma": 1, "debug_mode": %r, "max_area": 100, "percentage_max": 3, "train": %u, "Lambda": %.3f }' % (debug_mode, not deploy, 0.05)
             # DONE: change it back
-            if manifold_current_stage:
-                n.tops[last_manifold] = L.Python(n.tops[last_layer],n.tops[label_name[2]],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str=parameters))#,loss_weight=1)
+            # if manifold_current_stage:
+            n.tops[last_manifold] = L.Python(n.tops[last_layer],n.tops[label_name[2]],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str=parameters))#,loss_weight=1)
 #            n.tops[last_manifold] = L.Python(n.tops[label_name[1]],n.tops[label_name[2]],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str=parameters))#,loss_weight=1)
+            init_str = 'zero'            
+            if merge_init_avg:
+                init_str = 'avg'
+            parameters = '{"init": %r}' % (init_str)
+            n.tops[last_merg] = L.Python(n.tops[last_layer],n.tops[last_manifold],python_param=dict(module='processheatmaps',layer='MergeHeatMaps',param_str=parameters))    
         elif layername[l] == 'L':
             # Loss: n.loss layer is only in training and testing nets, but not in deploy net.
             if deploy == False:
@@ -133,7 +143,7 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
 #  no this          n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.pool_center_lower, n.tops[label_name[1]], concat_param=dict(axis=1))
 #            n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.pool_center_lower, n.tops[last_manifold], concat_param=dict(axis=1))
             if manifold_current_stage:
-                n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_manifold], n.pool_center_lower, concat_param=dict(axis=1))
+                n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_merg], n.pool_center_lower, concat_param=dict(axis=1))
             else:
                 n.tops['concat_stage%d' % stage] = L.Concat(n.tops[last_layer], n.tops[last_connect], n.pool_center_lower, concat_param=dict(axis=1))
                 
