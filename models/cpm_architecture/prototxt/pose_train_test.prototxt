@@ -350,7 +350,7 @@ layer {
   python_param {
     module: "processheatmaps"
     layer: "MergeHeatMaps"
-    param_str: "{\"init\": \'zero\'}"
+    param_str: "{\"init\": \'zero\', \"learning_rate\": 0.001}"
   }
 }
 layer {
@@ -707,7 +707,7 @@ layer {
   python_param {
     module: "processheatmaps"
     layer: "MergeHeatMaps"
-    param_str: "{\"init\": \'zero\'}"
+    param_str: "{\"init\": \'zero\', \"learning_rate\": 0.001}"
   }
 }
 layer {
@@ -935,7 +935,7 @@ layer {
   python_param {
     module: "processheatmaps"
     layer: "MergeHeatMaps"
-    param_str: "{\"init\": \'zero\'}"
+    param_str: "{\"init\": \'zero\', \"learning_rate\": 0.001}"
   }
 }
 layer {
@@ -1163,7 +1163,7 @@ layer {
   python_param {
     module: "processheatmaps"
     layer: "MergeHeatMaps"
-    param_str: "{\"init\": \'avg\'}"
+    param_str: "{\"init\": \'avg\', \"learning_rate\": 0.001}"
   }
 }
 layer {
@@ -1391,7 +1391,7 @@ layer {
   python_param {
     module: "processheatmaps"
     layer: "MergeHeatMaps"
-    param_str: "{\"init\": \'avg\'}"
+    param_str: "{\"init\": \'avg\', \"learning_rate\": 0.001}"
   }
 }
 layer {

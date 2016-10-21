@@ -6,7 +6,6 @@ Created on Wed Jun 29 15:33:08 2016
 """
 
 import caffe
-import os
 import numpy as np
 import yaml
 
@@ -17,21 +16,14 @@ class MergeHeatMaps(caffe.Layer):
         and for reading the parameters from the prototxt file.        
         """
         # extract data from prototxt
-        # self.debug_mode = yaml.load(self.param_str)["debug_mode"]
         self.init = yaml.load(self.param_str)["init"]               # either zero or avg
+        self.lr = float(yaml.load(self.param_str)["learning_rate"])
         
         # get dimensionality
         self.batch_size = bottom[0].data.shape[0]
         self.num_channels = bottom[0].data.shape[1]
         self.input_size = bottom[0].data.shape[-1]
         
-#        # define weights
-#        self.blobs.add_blob(self.num_channels)
-#        if (self.init == 'zero'):
-#            self.blobs[0].data[...] = np.zeros(self.num_channels)
-#        else:
-#            self.blobs[0].data[...] = np.array([0.5]*self.num_channels)
-            
         # define weights
         self.blobs.add_blob(1)
         if (self.init == 'zero'):
@@ -62,9 +54,11 @@ class MergeHeatMaps(caffe.Layer):
     def forward(self, bottom, top):
         """Forward data in the architecture to the following layer."""
         
-        # TODO:
-        # contraint weights to be between 0 and 1 if I want to have just one param per channel
-        # also check out to enforce that (truncating may not be a good solution)
+        if (self.blobs[0].data[...] < 0):
+            self.blobs[0].data[...] = 0
+        if (self.blobs[0].data[...] > 1):
+            self.blobs[0].data[...] = 1
+            
         input_heatMaps    = bottom[0].data[...]
         input_heatMaps_mf = bottom[1].data[...]
         weights = self.blobs[0].data[...]
@@ -78,10 +72,12 @@ class MergeHeatMaps(caffe.Layer):
                                                       weights*input_heatMaps_mf[b,c] +
                                                       (1-weights)*input_heatMaps[b,c])
         top[0].data[...] = heatMaps
+#        print 'merging weight: %r' % self.blobs[0].data[...]
     
     def backward(self, top, propagate_down, bottom):
         """Backward data in the learning phase. This layer does not propagate back information."""
-        pass
+        # TODO: should I consider the batch size
+        self.blobs[0].diff[...] = self.lr*np.average(top[0].diff[...])        
         # bottom[0].diff[...] = np.zeros(bottom[0].data.shape)
         
         

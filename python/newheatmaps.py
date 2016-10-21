@@ -69,7 +69,7 @@ class MyCustomLayer(caffe.Layer):
         # Adjust the shapes of top blobs and internal buffers to accommodate the shapes of the bottom blobs.
         # Bottom has the same shape of input
         top[0].reshape(*bottom[0].data.shape)
-        self.diff = np.zeros_like(bottom[0].data, dtype=np.float32)
+        # self.diff = np.zeros_like(bottom[0].data, dtype=np.float32)
     
     def findCoordinate(self, heatMap):
         """Given a heat-map of a squared dimension, identify the joint position as the 
@@ -262,7 +262,6 @@ class MyCustomLayer(caffe.Layer):
             (_, camera, _, _) = self.extractMetadata(metadata[b])
             # get new points
             (points, cov_matrices) = self.manifoldDataConversion(input_heatMaps[b], camera)
-            # DONE: change it back
             # heatMaps[b] = self.sumHeatMaps(input_heatMaps[b], self.generateHeatMaps(points, cov_matrices))
             heatMaps[b] = self.generateHeatMaps(points, cov_matrices)
             

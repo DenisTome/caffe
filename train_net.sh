@@ -26,7 +26,13 @@
 # -weights models/cpm_architecture/prototxt/caffemodel/manifold_samearch3/pose_iter_80000.caffemodel \
 # -gpu 0 2>&1 | tee models/cpm_architecture/prototxt/log2.txt
 
+# not working good
+# GLOG_logtostderr=1 build/tools/caffe train \
+# -solver models/cpm_architecture/prototxt/pose_solver.prototxt \
+# -snapshot models/cpm_architecture/prototxt/caffemodel/manifold_diffarch1/pose_iter_54500.solverstate \
+# -gpu 0 2>&1 | tee models/cpm_architecture/prototxt/log2.txt
+
 GLOG_logtostderr=1 build/tools/caffe train \
 -solver models/cpm_architecture/prototxt/pose_solver.prototxt \
--snapshot models/cpm_architecture/prototxt/caffemodel/manifold_diffarch1/pose_iter_54500.solverstate \
--gpu 0 2>&1 | tee models/cpm_architecture/prototxt/log2.txt
+-weights models/cpm_architecture/prototxt/caffemodel/manifold_samearch3/pose_iter_110000.caffemodel \
+-gpu 0 2>&1 | tee models/cpm_architecture/prototxt/log.txt

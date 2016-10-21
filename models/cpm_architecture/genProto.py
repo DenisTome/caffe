@@ -117,7 +117,8 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             init_str = 'zero'            
             if merge_init_avg:
                 init_str = 'avg'
-            parameters = '{"init": %r}' % (init_str)
+            merge_lr = 1e-3
+            parameters = '{"init": %r, "learning_rate": %r}' % (init_str, merge_lr)
             n.tops[last_merg] = L.Python(n.tops[last_layer],n.tops[last_manifold],python_param=dict(module='processheatmaps',layer='MergeHeatMaps',param_str=parameters))    
         elif layername[l] == 'L':
             # Loss: n.loss layer is only in training and testing nets, but not in deploy net.
@@ -229,7 +230,7 @@ if __name__ == "__main__":
     directory = 'prototxt'
     dataFolder = '%s/lmdb/train' % (path_in_caffe)
     batch_size = 8
-    snapshot = 500 #5000
+    snapshot = 100# 500 #5000
     # base_lr = 1e-5 (8e-5)
     base_lr = 5e-4 #8e-5
     solver_param = dict(stepsize=50000, batch_size=batch_size, num_epochs=12, base_lr = base_lr,
@@ -238,7 +239,7 @@ if __name__ == "__main__":
                         snapshot=snapshot, gpu=True)
     ### END
 
-    d_caffemodel = '%s/caffemodel/manifold_diffarch1' % directory # the place you want to store your caffemodel
+    d_caffemodel = '%s/caffemodel/manifold_diffarch3' % directory # the place you want to store your caffemodel
 
     # num_parts and np_in_lmdb are two parameters that are used inside the framework to move from one
     # dataset definition to another. Num_parts is the number of parts we want to have, while
