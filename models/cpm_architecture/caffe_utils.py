@@ -179,6 +179,10 @@ def getOutputLayer(net, layer_name):
         return net.blobs.get(layer_name).data[0]
     return net.blobs.get(layer_name).data
 
+def getDiffLayer(net, layer_name):
+    """Get gradients of layer_name layer"""
+    return net.blobs.get(layer_name).diff[0]
+
 def getParamLayer(net, layer_name):
     return net.params[layer_name][0].data
     
