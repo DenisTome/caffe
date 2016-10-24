@@ -117,7 +117,7 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             init_str = 'zero'            
             if merge_init_avg:
                 init_str = 'avg'
-            merge_lr = 1e-3
+            merge_lr = 5e-2
             parameters = '{"init": %r, "learning_rate": %r}' % (init_str, merge_lr)
             n.tops[last_merg] = L.Python(n.tops[last_layer],n.tops[last_manifold],python_param=dict(module='processheatmaps',layer='MergeHeatMaps',param_str=parameters))    
         elif layername[l] == 'L':

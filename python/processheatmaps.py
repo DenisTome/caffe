@@ -17,7 +17,10 @@ class MergeHeatMaps(caffe.Layer):
         """
         # extract data from prototxt
         self.init = yaml.load(self.param_str)["init"]               # either zero or avg
-        self.lr = float(yaml.load(self.param_str)["learning_rate"])
+        try:
+            self.lr = float(yaml.load(self.param_str)["learning_rate"])
+        except:
+            self.lr = 1    
         
         # get dimensionality
         self.batch_size = bottom[0].data.shape[0]
@@ -76,10 +79,21 @@ class MergeHeatMaps(caffe.Layer):
     
     def backward(self, top, propagate_down, bottom):
         """Backward data in the learning phase. This layer does not propagate back information."""
-        # TODO: should I consider the batch size
-        raise Exception('Diff received is %r' % np.sum(top[0].diff[...]))
-        avg = np.average(top[0].diff[...])
-        self.blobs[0].diff[...] = self.lr*[avg, avg]       
+        input_heatMaps    = bottom[0].data[...]
+        input_heatMaps_mf = bottom[1].data[...]
+        res1 = np.zeros((self.batch_size, self.num_channels, self.input_size, self.input_size),
+                            dtype = np.float32)
+        res2 = np.zeros((self.batch_size, self.num_channels, self.input_size, self.input_size),
+                            dtype = np.float32)
+        for b in range(self.batch_size):
+            for c in range(self.num_channels):
+                res1[b,c] = input_heatMaps[b,c]*top[0].diff[b,c]
+                res2[b,c] = input_heatMaps_mf[b,c]*top[0].diff[b,c]
+            
+        avg1 = self.lr*res1.sum()
+        avg2 = self.lr*res2.sum()
+        self.blobs[0].diff[...] = [avg1, avg2] 
+        # raise Exception('Diff received is %r then it becomes %r' % (np.average(top[0].diff[...]) ,avg1))
         # bottom[0].diff[...] = np.zeros(bottom[0].data.shape)
         
         
