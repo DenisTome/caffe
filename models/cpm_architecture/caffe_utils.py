@@ -8,6 +8,8 @@ Created on Fri Sep 30 14:38:16 2016
 import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
+from matplotlib.backends.backend_pdf import PdfPages
 import cv2
 import os
 import caffe
@@ -297,20 +299,53 @@ def plotHeatMaps(heatMaps, secondHeatMaps=[], title=False):
                 plotHeatMap(heatMaps[i], secondHeatMaps, title)
             plt.waitforbuttonpress()
 
-def plotImageJoints(image, joints, joints2=[]):
+def getConnections():
+    conn = [[0, 1],[1, 2],[2, 3],[0, 4],[4, 5],[5, 6],[0, 7],[7, 8],[8, 9],
+            [9, 10],[8, 11],[11, 12],[12, 13],[8, 14],[14, 15],[15, 16]]
+    return conn
+
+def plotImageJoints(image, joints, joints2=[], h=False):
     """Plot the image and the joint positions"""
-    img = image.copy()
+    
+    def getJointColor(j):
+        colors = [(255,255,0),(255,0,255),(0,0,255),(0,255,255),(255,0,0),(0,255,0)]
+        c = 0
+        if j in range(1,4):
+            c = 1
+        if j in range(4,7):
+            c = 2
+        if j in range(9,11):
+            c = 3
+        if j in range(11,14):
+            c = 4
+        if j in range(14,17):
+            c = 5
+        return colors[c]
+    
+    img = convertImgCv2(image)
+    marker_size = 4
+    line_size = 2
     if not checkJointsNonLinearised(joints):
         joints = xyJoints(np.array(joints))
     if (len(joints2) != 0):
         joints2 = xyJoints(np.array(joints2).flatten())
-    for j in range(joints.shape[0]):
-        cv2.circle(img, (int(joints[j][0]), int(joints[j][1])), 3, (255, 0, 0), -1)
-        if (len(joints2) != 0):
-            cv2.circle(img, (int(joints2[j][0]), int(joints2[j][1])), 3, (0, 0, 255), -1)
-    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        for j in range(joints.shape[0]):
+            cv2.circle(img, (int(joints[j][0]), int(joints[j][1])), 3, (255, 0, 0), -1)
+            if (len(joints2) != 0):
+                cv2.circle(img, (int(joints2[j][0]), int(joints2[j][1])), 3, (0, 0, 255), -1)
+    else:
+        conn = getConnections()
+        for c in conn:
+            cv2.line(img, tuple(joints[c[0]].astype(int)),
+                          tuple(joints[c[1]].astype(int)), getJointColor(c[0]), line_size, 16)
+        for j in range(joints.shape[0]):
+            cv2.circle(img, (int(joints[j][0]), int(joints[j][1])),
+                       marker_size, getJointColor(j), -1)
+    if not h:                  
+        plt.imshow(img)
+    return img
     
-def plotJoints(joints, joints2=[]):
+def plotJoints(joints, joints2=[], img=False):
     """Plot the image and the joint positions"""
     if not checkJointsNonLinearised(joints):
         joints = xyJoints(np.array(joints))
@@ -322,6 +357,76 @@ def plotJoints(joints, joints2=[]):
             plt.scatter(joints2[:,0],joints2[:,1], color='b')
     axes = plt.gca()
     axes.axis('equal')
+
+def plot3DJoints(joints, save_pdf=False):
+    import mpl_toolkits.mplot3d.axes3d as p3
+    
+    def getJointColor(j):
+        colors = [(0,0,0),(255,0,255),(0,0,255),(0,255,255),(255,0,0),(0,255,0)]
+        c = 0
+        if j in range(1,4):
+            c = 1
+        if j in range(4,7):
+            c = 2
+        if j in range(9,11):
+            c = 3
+        if j in range(11,14):
+            c = 4
+        if j in range(14,17):
+            c = 5
+        return colors[c]
+    
+    joints[2] -= joints[2].min()
+    fig = plt.figure()
+    ax = fig.gca(projection = '3d')
+    conn = getConnections()
+    for c in conn:
+        col = '#%02x%02x%02x' % getJointColor(c[0])
+        ax.plot([joints[0,c[0]], joints[0,c[1]]],
+                [joints[1,c[0]], joints[1,c[1]]],
+                [joints[2,c[0]], joints[2,c[1]]], c=col)
+    for j in range(joints.shape[1]):
+        col = '#%02x%02x%02x' % getJointColor(j)
+        ax.scatter(joints[0,j], joints[1,j], joints[2,j], c=col, marker='o', edgecolor=col)
+    p_v_x = 1#2
+    p_v_y = 1#3
+    diff_x = joints[0].max() - joints[0].min()
+    diff_y = joints[1].max() - joints[1].min()
+    diff_z = joints[2].max() - joints[2].min()
+    prop_x = diff_x*p_v_x/diff_z
+    prop_y = diff_y*p_v_y/diff_z
+    ax.set_zlim3d(0, joints[2].max())
+    ax = fig.gca(projection = '3d')
+    ax.pbaspect = [prop_x, prop_y, 1]
+    
+    # Defining style
+    ax.tick_params(axis='both', which='major', labelsize=9)
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.xaxis.labelpad = 20
+    ax.yaxis.labelpad = 20
+    ax.zaxis.labelpad = 20
+    xticks_v = [joints[0].min()+0.1*diff_x, 0, joints[0].max()-0.1*diff_x]
+    yticks_v = [joints[1].min()+0.1*diff_y, 0, joints[1].max()-0.1*diff_y]
+    rot = 45
+    plt.xticks(xticks_v, rotation=rot)
+    plt.yticks(yticks_v, rotation=-rot)
+    ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+    ax.zaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+    plt.show()
+    if save_pdf:
+        with PdfPages(save_pdf) as pdf:
+            pdf.savefig()
+            plt.close()
+    
+def convertImgCv2(img):
+    return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    
+def plotCv2Image(img):
+    img = convertImgCv2(img)
+    plt.imshow(img)
 
 def loadJsonFile(json_file):
     """Load json file"""

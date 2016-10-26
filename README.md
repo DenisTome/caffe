@@ -24,6 +24,21 @@ sudo pip install mpldatacursor
 sudo apt-get install python-yaml
 </pre>
 
+###Libraries
+In order to have the proper visualisation the following changes are necessary.
+
+Edit file <pre>site-packages\mpl_toolkits\mplot3d\axes3d.py</pre> addind the new code in the class set up
+<pre>
+self.pbaspect = [1.0, 1.0, 1.0]
+</pre>
+
+and changing the code
+<pre>
+xmin, xmax = self.get_xlim3d() / self.pbaspect[0]
+ymin, ymax = self.get_ylim3d() / self.pbaspect[1]
+zmin, zmax = self.get_zlim3d() / self.pbaspect[2]
+</pre>
+
 ## Fine-tuning a CNN for detection with Caffe
 <pre>
   GLOG_logtostderr=1 build/tools/caffe train \
