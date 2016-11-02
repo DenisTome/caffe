@@ -25,17 +25,18 @@ def load_parameters():
     R[2] = par['c3'][0,0]['R']
     R[3] = par['c4'][0,0]['R']
     return (R, train['e'], train['z'], train['a'].std(0)**-1 )
-    
+
+def centre(m):
+    """Returns centered data in position (0,0)"""
+    return ((m.T - m.mean(1)).T, m.mean(1))
+          
 def normalise_data(w):
     """Normalise data by centering all the 2d skeletons (0,0) and by rescaling
-    all of them such that the height is 2.0 (expressed in meters)."""
-    
-    def centre(m):
-        """Returns centered data in position (0,0)"""
-        return ((m.T - m.mean(1)).T, m.mean(1))
-        
+    all of them such that the height is 2.0 (expressed in meters).
+    """
     w = w.reshape(-1,2).transpose(1,0)
     (d2, mean) = centre(w)
+    
     m2 = d2[1,:].min(0)/2.0
     m2 = m2-d2[1,:].max(0)/2.0
     crap = (m2 == 0)
@@ -43,6 +44,14 @@ def normalise_data(w):
         m2 = 1.0
     d2 /= m2
     return (d2, m2, mean)
+    
+def project2D(r, z, a, e, R_c, scale):
+    """Project 3D points into 2D and return them in the same scale as the given 
+    2D predicted points."""
+    mod = uc.build_model(a, e, z)
+    p = uc.project_model(mod, R_c, r)
+    p *= scale
+    return p
         
 def preprocessImage(NN, curr_data, batch_size, num_channels):
     info = np.empty(6, dtype=int)
@@ -101,7 +110,7 @@ def postprocessHeatmaps(NN, out, curr_data, info):
     err = ut.computeError(gt, predictions)
     return (predictions, heatMaps, err)
 
-def executeOnFrame(NN, net, data, output_dir, astr=False):
+def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False):
     num_channels = ut.getNumChannelsLayer(net,'data')
     joints = np.array(data['joint_self'])
     
@@ -113,8 +122,8 @@ def executeOnFrame(NN, net, data, output_dir, astr=False):
     save_name = output_dir + 'image.png'
     if astr:
         save_name = output_dir + 'image' + astr + '.png'
-    ut.plt.imsave(save_name, img)
-    
+    img_saved = ut.convertImgCv2(img)    
+    ut.plt.imsave(save_name, img_saved)
     
     # Extract 2D predictions
     (imgch, info) = preprocessImage(NN, data, 1, num_channels)
@@ -141,16 +150,27 @@ def executeOnFrame(NN, net, data, output_dir, astr=False):
     (default_r, e, z, weights) = load_parameters()
     (w, s, mean) = normalise_data(pred.flatten())
     w = w[np.newaxis,:]
-    (a, r) = uc.estimate_a_and_r(w, e, z, default_r[int(data['camera'])], Lambda*weights)
+    camera = int(data['camera']) - 1
+    (a, r) = uc.estimate_a_and_r(w, e, z, default_r[camera], Lambda*weights)
     for j in xrange(10):
-        r = uc.reestimate_r(w, z, a, e, default_r[int(data['camera'])], r)
-        (a, res) = uc.reestimate_a(w, e, z, r, default_r[int(data['camera'])], Lambda*weights)
+        r = uc.reestimate_r(w, z, a, e, default_r[camera], r)
+        (a, res) = uc.reestimate_a(w, e, z, r, default_r[camera], Lambda*weights)
     mod = uc.build_model(a, e, z).squeeze()
     save_name = output_dir + 'image_3d.pdf'
     if astr:
         save_name = output_dir + 'image_3d' + astr + '.pdf'
     ut.plot3DJoints(-mod, save_pdf=save_name)
     
+    if proj:
+        points = project2D(r, z, a, e, default_r[camera], s).squeeze()
+        points += mean[:,np.newaxis]
+        img_2d_skel = ut.plotImageJoints(img_orig, points, h=True) 
+#        img_2d_skel = ut.cropImage(img_2d_skel, box_points)
+        save_name = output_dir + 'image_2d_proj.png'
+        if astr:
+            save_name = output_dir + 'image_2d_proj' + astr + '.png'
+        ut.plt.imsave(save_name, img_2d_skel)
+        
     return (img, heatMap, img_2d_skel)
 
 def checkFilesExistance(prototxt, caffemodel):
@@ -163,23 +183,19 @@ def getNameOutputFile(caffemodel):
     output_file = re.sub('\.caffemodel', '_predictions.mat', caffemodel)
     return output_file
     
-def getIndex(data, camera=1, person=7, action=1, fno=0):
-    action += 1 # action 1 is skept
+def getIndex(data, camera=1, person=9, action=2, fno=0):
     for i in range(len(data)):
-        if (data['camera']==camera and data['person']==person and data['action']==action):
-            break
-    return i+fno
+        if (data[i]['camera']==camera and data[i]['person']==person and data[i]['action']==action):
+            return i+fno
+    return -1
 
 ## SET ENVIRONMENT
-
-caffemodel = ut.getCaffeCpm() + '/prototxt/caffemodel/manifold_diffarch3/to_test/pose_iter_16000.caffemodel'
+caffemodel = ut.getCaffeCpm() + '/prototxt/caffemodel/manifold_diffarch3/pose_iter_22000.caffemodel'
 prototxt = ut.getCaffeCpm() + '/prototxt/pose_deploy_singleimg.prototxt'
-output_dir = '/home/denitome/Desktop/'
+output_dir = '/home/denitome/Desktop/imgs/'
 checkFilesExistance(prototxt, caffemodel)
 
-# TODO: change it back
-# NN = ut.load_configuration(gpu=(not args.with_cpu))
-NN = ut.load_configuration(gpu=False)
+NN = ut.load_configuration(gpu=True)
 ut.setCaffeMode(NN['GPU'])
 
 # load caffe model
@@ -187,4 +203,5 @@ json_file = ut.getCaffeCpm() + '/jsonDatasets/H36M_annotations_testSet.json'
 net = ut.loadNetFromPath(caffemodel, prototxt)
 (data, num_elem) = ut.loadJsonFile(json_file)
 
-executeOnFrame(NN, net, data, output_dir)
+idx = getIndex(data, camera=1, person=9, action=3, fno=1) #302
+executeOnFrame(NN, net, data[idx], output_dir, proj=True, astr='_tmp')

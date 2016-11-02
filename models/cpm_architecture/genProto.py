@@ -102,7 +102,8 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             last_manifold = 'manifolds_stage%d' % stage
             last_merg = 'merge_hm_stage%d' % stage
             debug_mode = 0
-#            if (stage >= 4):
+#            if (stage == 5):
+#                debug_mode = 1
             manifold_current_stage = True
             if (stage >= 4):
                 merge_init_avg = True
@@ -237,9 +238,9 @@ if __name__ == "__main__":
                         train_size=115327, test_size=40649, test_interval=5000,
                         weight_decay=0.0005, lr_policy_fixed=False, disp_iter=5,
                         snapshot=snapshot, gpu=True)
-    ### END
 
     d_caffemodel = '%s/caffemodel/manifold_diffarch3' % directory # the place you want to store your caffemodel
+#    d_caffemodel = '%s/caffemodel/tmp' % directory
 
     # num_parts and np_in_lmdb are two parameters that are used inside the framework to move from one
     # dataset definition to another. Num_parts is the number of parts we want to have, while

@@ -234,20 +234,35 @@ def generateMaskChannel(size, frame_num, camera, action, person):
     metadata[0,3] = person
     return metadata[:,:,np.newaxis]
 
+def checkXY(joints):
+    """Check if data are [x,y,x,y,...] and not [x,y,z,x,y,z,...]"""
+    num_elems = len(np.array(joints).flatten())
+    return ((np.mod(num_elems,2)==0) and (np.mod(num_elems,3)!=0)) 
+
 def xyJoints(linearisedJoints):
     """Given a vector of joints it returns the joint positions in
     the [[x,y],[x,y]...] format"""
     num_elems = len(np.array(linearisedJoints).flatten())
-    assert(num_elems >= (17*2))
+    assert(np.mod(num_elems,2) == 0)
     if (type(linearisedJoints) == list):
         linearisedJoints = np.array(linearisedJoints)
     xy = linearisedJoints.reshape((num_elems/2, 2))
     return xy
 
+def xyzJoints(linearisedJoints):
+    """Given a vector of joints it returns the joint positions in
+    the [[x,y,z],[x,y,z]...] format"""
+    num_elems = len(np.array(linearisedJoints).flatten())
+    assert(np.mod(num_elems,3) == 0)
+    if (type(linearisedJoints) == list):
+        linearisedJoints = np.array(linearisedJoints)
+    xyz = linearisedJoints.reshape((num_elems/3, 3))
+    return xyz
+
 def checkJointsNonLinearised(joints):
-    """Check if joints are in the [[x,y],[x,y],...] format"""
+    """Check if joints are in the [[x,y],[x,y],...] or [[x,y,z],[x,y,z],...] format"""
     try:
-        check = joints.shape[0] > joints.shape[1]
+        check = np.shape(joints)[0] > np.shape(joints)[1]
         return check
     except:
         return False
@@ -255,9 +270,14 @@ def checkJointsNonLinearised(joints):
 def filterJoints(joints):
     """From the whole set of joints it removes those that are not used in 
     the error computation.
-    Joints is in the format [[x,y],[x,y]...]"""
+    Joints is in the format [[x,y],[x,y]...] or [[x,y,z],[x,y,z]...]"""
+    if (type(joints) == list):
+        joints = np.array(joints)
     if not checkJointsNonLinearised(joints):
-        joints = xyJoints(joints)
+        if checkXY:
+            joints = xyJoints(joints)
+        else:
+            joints = xyzJoints(joints)
     joints_idx = [0,1,2,3,6,7,8,12,13,14,15,17,18,19,25,26,27]
     new_joints = joints[joints_idx]
     return np.array(new_joints)
@@ -357,6 +377,7 @@ def plotJoints(joints, joints2=[], img=False):
             plt.scatter(joints2[:,0],joints2[:,1], color='b')
     axes = plt.gca()
     axes.axis('equal')
+    plt.show()
 
 def plot3DJoints(joints, save_pdf=False):
     import mpl_toolkits.mplot3d.axes3d as p3
@@ -434,6 +455,13 @@ def loadJsonFile(json_file):
         data_this = json.load(data_file)
         data = np.array(data_this['root'])
         return (data, len(data))
+
+def getActionNames():
+    names = ['Directions', 'Discussion', 'Eating',
+             'Greeting', 'Phoning', 'Posing', 'Purchases', 'Sitting',
+             'SittingDown', 'Smoking', 'TakingPhoto', 'Waiting', 'Walking',
+             'WalkingDog', 'WalkingTogether']
+    return [{'action':names[i],'idx':i+2} for i in range(len(names))]
 
 def getCaffeCpm():
     """Get caffe com dir path"""
