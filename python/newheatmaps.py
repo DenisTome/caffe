@@ -226,7 +226,7 @@ class MyCustomLayer(caffe.Layer):
         
         points = self.project2D(r, self.z, a, self.e, self.default_r[camera], s).squeeze()
         points += mean[:,np.newaxis]
-
+        
         return points, covariance_matrices
     
     def extractMetadata(self, channel):

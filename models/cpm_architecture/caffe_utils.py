@@ -379,7 +379,7 @@ def plotJoints(joints, joints2=[], img=False):
     axes.axis('equal')
     plt.show()
 
-def plot3DJoints(joints, save_pdf=False):
+def plot3DJoints(joints, save_pdf=False, pbaspect=False):
     import mpl_toolkits.mplot3d.axes3d as p3
     
     def getJointColor(j):
@@ -418,7 +418,10 @@ def plot3DJoints(joints, save_pdf=False):
     prop_y = diff_y*p_v_y/diff_z
     ax.set_zlim3d(0, joints[2].max())
     ax = fig.gca(projection = '3d')
-    ax.pbaspect = [prop_x, prop_y, 1]
+    if not pbaspect:
+        ax.pbaspect = [prop_x, prop_y, 1]
+    else:
+        ax.pbaspect = pbaspect
     
     # Defining style
     ax.tick_params(axis='both', which='major', labelsize=9)

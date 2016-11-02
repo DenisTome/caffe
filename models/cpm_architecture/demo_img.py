@@ -110,7 +110,7 @@ def postprocessHeatmaps(NN, out, curr_data, info):
     err = ut.computeError(gt, predictions)
     return (predictions, heatMaps, err)
 
-def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False):
+def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False, show=False):
     num_channels = ut.getNumChannelsLayer(net,'data')
     joints = np.array(data['joint_self'])
     
@@ -119,9 +119,9 @@ def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False):
     box_points = ut.getBoundingBox(joints, ut.getCenterJoint(joints),
                                75, img_orig.shape[1], img_orig.shape[0])
     img = ut.cropImage(img_orig, box_points)
-    save_name = output_dir + 'image.png'
+    save_name = output_dir + 'image_RGB.png'
     if astr:
-        save_name = output_dir + 'image' + astr + '.png'
+        save_name = output_dir + 'image_RGB' + astr + '.png'
     img_saved = ut.convertImgCv2(img)    
     ut.plt.imsave(save_name, img_saved)
     
@@ -132,7 +132,7 @@ def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False):
     layer_name = 'Mconv5_stage6_new'
     out = ut.getOutputLayer(net, layer_name)
     (pred, heatMaps, err) = postprocessHeatmaps(NN, out, data, info)
-    img_2d_skel = ut.plotImageJoints(img_orig, pred, h=True)
+    img_2d_skel = ut.plotImageJoints(img_orig, pred, h=(not show))
     img_2d_skel = ut.cropImage(img_2d_skel, box_points)
     save_name = output_dir + 'image_2d.png'
     if astr:
@@ -160,12 +160,14 @@ def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False):
     if astr:
         save_name = output_dir + 'image_3d' + astr + '.pdf'
     ut.plot3DJoints(-mod, save_pdf=save_name)
+#    ut.plot3DJoints(-mod, pbaspect=[1,0.88,1])
     
     if proj:
         points = project2D(r, z, a, e, default_r[camera], s).squeeze()
         points += mean[:,np.newaxis]
-        img_2d_skel = ut.plotImageJoints(img_orig, points, h=True) 
-#        img_2d_skel = ut.cropImage(img_2d_skel, box_points)
+        ut.plt.figure()
+        img_2d_skel = ut.plotImageJoints(img_orig, points.T, h=False)
+        img_2d_skel = ut.cropImage(img_2d_skel, box_points)
         save_name = output_dir + 'image_2d_proj.png'
         if astr:
             save_name = output_dir + 'image_2d_proj' + astr + '.png'
@@ -203,5 +205,7 @@ json_file = ut.getCaffeCpm() + '/jsonDatasets/H36M_annotations_testSet.json'
 net = ut.loadNetFromPath(caffemodel, prototxt)
 (data, num_elem) = ut.loadJsonFile(json_file)
 
-idx = getIndex(data, camera=1, person=9, action=3, fno=1) #302
-executeOnFrame(NN, net, data[idx], output_dir, proj=True, astr='_tmp')
+idx = getIndex(data, camera=1, person=9, action=12, fno=1030)
+executeOnFrame(NN, net, data[idx], output_dir, proj=False, astr='_tmp', show=True)
+
+
