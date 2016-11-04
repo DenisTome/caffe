@@ -1,8 +1,7 @@
 # Caffe (CPM Data Layer)
 CPM architecture adapted in order to use the **Human3.6M** dataset's set of joints with the implementation of the manifold layer.
-The architecture includes the manifold layer in stages: 4,5.
 
-IN THIS VERSION RATHER THAN USING THE MANIFOLD LAYER JUST IN STAGE 4 AND 5 WE TRY TO USE IT ON ALL STAGES.
+The architecture includes the manifold layer in all stages. Additionally, a fusion layer has been introduced which merge the heat-maps relative to the same joint (output of the stage and output of the manifold-layer).
 
 ## Data dependencies
 0. */data/Human3.6M/Data/* has to contain all the subject directories for testing and training the model
