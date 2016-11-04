@@ -29,8 +29,11 @@ def load_parameters():
 def centre(m):
     """Returns centered data in position (0,0)"""
     return ((m.T - m.mean(1)).T, m.mean(1))
+
+def centre3d(m):
+    return (m - m.mean(0)).T
           
-def normalise_data(w):
+def normalise_data(w, w3d=[]):
     """Normalise data by centering all the 2d skeletons (0,0) and by rescaling
     all of them such that the height is 2.0 (expressed in meters).
     """
@@ -43,7 +46,21 @@ def normalise_data(w):
     if crap:
         m2 = 1.0
     d2 /= m2
-    return (d2, m2, mean)
+
+    if len(w3d)==0:
+        return (d2, m2, mean)
+    
+    # Normalise 3D
+    w3d = centre3d(w3d)
+    m3=w3d[2,:].min(0)/2.0 #Height normalisation
+    m3=m3-w3d[2,:].max(0)/2.0
+    w3d /= m3
+    
+    return (d2, m2, mean), (w3d, m3)
+
+def cost3d(m,gt,gts):
+    out=np.sqrt(((gt-m)**2).sum(0)).mean(-1)*np.abs(gts)
+    return out
     
 def project2D(r, z, a, e, R_c, scale):
     """Project 3D points into 2D and return them in the same scale as the given 
@@ -110,7 +127,7 @@ def postprocessHeatmaps(NN, out, curr_data, info):
     err = ut.computeError(gt, predictions)
     return (predictions, heatMaps, err)
 
-def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False, show=False):
+def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False, show=False, stage_3d_err=False):
     num_channels = ut.getNumChannelsLayer(net,'data')
     joints = np.array(data['joint_self'])
     
@@ -162,6 +179,28 @@ def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False, show=False
     ut.plot3DJoints(-mod, save_pdf=save_name)
 #    ut.plot3DJoints(-mod, pbaspect=[1,0.88,1])
     
+    if stage_3d_err:
+        layers = ['conv7_stage1_new', 'Mconv5_stage2_new',
+                  'Mconv5_stage3_new', 'Mconv5_stage4_new',
+                  'Mconv5_stage5_new', 'Mconv5_stage6_new']
+        gt3d = ut.filterJoints(data['joint_self_3d'])
+        for l in range(len(layers)):
+            layer_name = layers[l]
+            out = ut.getOutputLayer(net, layer_name)
+            (pred, _, err) = postprocessHeatmaps(NN, out, data, info)
+            (w, s, mean), (w3d, s3d) = normalise_data(pred.flatten(), w3d=gt3d)
+            w = w[np.newaxis,:]
+            (a, r) = uc.estimate_a_and_r(w, e, z, default_r[camera], Lambda*weights)
+            for j in xrange(10):
+                r = uc.reestimate_r(w, z, a, e, default_r[camera], r)
+                (a, res) = uc.reestimate_a(w, e, z, r, default_r[camera], Lambda*weights)
+            m = uc.build_and_rot_model(a,e,z,r).squeeze()
+            err = cost3d(m, w3d, s3d)
+            print '3D error stage %r: %.2f' % (l, err)
+            save_name = '%sstage_%d_3d.pdf' % (output_dir, l)
+            title = 'Stage %r\nErr: %.2f mm' % (l+1, err)
+            ut.plot3DJoints(-m, save_pdf=save_name, title=title)
+    
     if proj:
         points = project2D(r, z, a, e, default_r[camera], s).squeeze()
         points += mean[:,np.newaxis]
@@ -172,8 +211,7 @@ def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False, show=False
         if astr:
             save_name = output_dir + 'image_2d_proj' + astr + '.png'
         ut.plt.imsave(save_name, img_2d_skel)
-        
-    return (img, heatMap, img_2d_skel)
+#    return (img, heatMap, img_2d_skel)
 
 def checkFilesExistance(prototxt, caffemodel):
     if not ut.checkFileExists(prototxt):
@@ -205,7 +243,7 @@ json_file = ut.getCaffeCpm() + '/jsonDatasets/H36M_annotations_testSet.json'
 net = ut.loadNetFromPath(caffemodel, prototxt)
 (data, num_elem) = ut.loadJsonFile(json_file)
 
-idx = getIndex(data, camera=1, person=9, action=12, fno=1030)
-executeOnFrame(NN, net, data[idx], output_dir, proj=False, astr='_tmp', show=True)
+idx = getIndex(data, camera=1, person=9, action=14, fno=710)
+executeOnFrame(NN, net, data[idx], output_dir, proj=False,astr='_tmp_stage', show=True, stage_3d_err=True)
 
 

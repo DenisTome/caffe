@@ -379,7 +379,7 @@ def plotJoints(joints, joints2=[], img=False):
     axes.axis('equal')
     plt.show()
 
-def plot3DJoints(joints, save_pdf=False, pbaspect=False):
+def plot3DJoints(joints, save_pdf=False, pbaspect=False, title=False):
     import mpl_toolkits.mplot3d.axes3d as p3
     
     def getJointColor(j):
@@ -439,6 +439,10 @@ def plot3DJoints(joints, save_pdf=False, pbaspect=False):
     ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
     ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
     ax.zaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+    if title:
+        plt.title(title, fontsize=14)
+#        plt.title(title, fontsize=14, fontweight='bold')
+        
     plt.show()
     if save_pdf:
         with PdfPages(save_pdf) as pdf:
