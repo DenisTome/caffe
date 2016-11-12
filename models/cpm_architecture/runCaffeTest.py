@@ -132,6 +132,7 @@ def mergeParts(NN, dir_path, num_elem, elems_per_part):
     files = sorted(files, key=getIter)
     preds = np.empty((num_elem, NN['njoints']*2))
     errors = np.empty(num_elem)
+    covs   = np.zeros((num_elem, NN['njoints'],4))
     frame_num = np.empty(num_elem)
     for i in range(len(files)):
         part = getIter(files[i])
@@ -140,8 +141,9 @@ def mergeParts(NN, dir_path, num_elem, elems_per_part):
         start_idx = (part-1)*elems_per_part
         preds[start_idx:start_idx+curr_data_size] = curr_data['preds']
         errors[start_idx:start_idx+curr_data_size] = curr_data['errors'].flatten()
+        covs[start_idx:start_idx+curr_data_size] = curr_data['covs']
         frame_num[start_idx:start_idx+curr_data_size] = curr_data['frame_num'].flatten()
-    return (preds, errors, frame_num)
+    return (preds, errors, covs, frame_num)
 
 def checkFilesExistance(prototxt, caffemodel):
     if not ut.checkFileExists(prototxt):
@@ -195,8 +197,8 @@ def main():
         output_file += '/predictions.mat'
 
     if args.merge_parts_dir is not None:
-        (preds, errors, frame_num) = mergeParts(NN, args.merge_parts_dir, num_elem, elems_per_part)
-        ut.sio.savemat(output_file, {'preds':preds,'errors':errors,'frame_num':frame_num})
+        (preds, errors, covs, frame_num) = mergeParts(NN, args.merge_parts_dir, num_elem, elems_per_part)
+        ut.sio.savemat(output_file, {'preds':preds,'errors':errors,'covs':covs,'frame_num':frame_num})
         print 'mean error: %r' % errors.mean()
         return
     
