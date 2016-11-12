@@ -105,6 +105,9 @@ def findPoint(heatMap):
     idx = np.where(heatMap == heatMap.max())
     x = idx[1][0]
     y = idx[0][0]
+    if (heatMap[y,x]==0):
+        x = int(heatMap.shape[1]/2)
+        y = int(heatMap.shape[0]/2)
     return x,y
 
 def generateGaussian(Sigma, input_size, position):
@@ -134,6 +137,60 @@ def generateHeatMaps(joints, input_size, sigma):
     # generating last heat maps which contains all joint positions
     heatMaps[-1] = np.maximum(1.0-heatMaps[0:heatMaps.shape[0]-1].max(axis=0), 0)
     return heatMaps
+
+def findCovariance(heatMap, percentage_max=0.05, max_area=100):
+        """Given a heat-map representing the likelihood of the joint in the image
+        identify the joint position and the relative joint uncertainty represented 
+        as the covariance matrix."""
+        
+        mean_value = findPoint(heatMap)
+        # at the beginning there might be heatmaps with all zero values
+        if (heatMap[mean_value[1],mean_value[0]] == 0):
+            sigma_sq = heatMap.shape[0]*heatMap.shape[0]
+            M = np.array([[sigma_sq, 0], [0, sigma_sq]])
+            return M.flatten()
+        
+        idx = np.where(heatMap >= heatMap.max()* percentage_max)
+        # there are some cases (especially at the beginning) where the heat-map is noise
+        # and this condition may not be satisfied
+        if (len(idx[0]) == 0):
+            sigma_sq = heatMap.shape[0]*heatMap.shape[0]
+            M = np.array([[sigma_sq, 0], [0, sigma_sq]])
+            return mean_value, M.flatten()
+            
+        area = [np.min(idx[1]),np.min(idx[0]),np.max(idx[1]),np.max(idx[0])]
+        if (np.max(np.abs([area[0]-mean_value[0],area[1]-mean_value[1],
+                           area[2]-mean_value[0],area[3]-mean_value[1]])) > max_area):
+            left = mean_value[0] - max_area
+            if (left < 0):
+                left = 0
+            top = mean_value[1] - max_area
+            if (top < 0):
+                top = 0
+            right = mean_value[0] + max_area
+            if (right > heatMap.shape[0]):
+                right = heatMap.shape[0]
+            bottom = mean_value[1] + max_area    
+            if (bottom > heatMap.shape[1]):
+                bottom = heatMap.shape[1]
+            area = np.abs([left , top, right,bottom])
+        
+        # it does not matter that we are considering a small portion of the 
+        # heatmap (we are just estimating the covariance matrix which is independent
+        # on the mean value, whatever it is).
+        heatmap_area = heatMap[area[1]:area[3],area[0]:area[2]]
+        
+        # extract covariance matrix
+        flatten_hm = heatmap_area.flatten()
+        idx = np.where( flatten_hm < 0)
+        flatten_hm[idx] = 0
+        flatten_hm /= flatten_hm.sum()
+        x_coord = np.subtract(np.tile(range(area[0],area[2]), area[3]-area[1]),mean_value[0])
+        y_coord = np.subtract(np.repeat(range(area[1],area[3]), area[2]-area[0]),mean_value[1])
+        M = np.vstack((x_coord,y_coord))
+    
+        cov_matrix = np.dot(M,np.transpose(np.multiply(M,flatten_hm)))
+        return cov_matrix.flatten()
 
 def cropImage(image, box_points, joints=False):
     """Given a box with the format [x_min, y_min, width, height]
@@ -379,7 +436,8 @@ def plotJoints(joints, joints2=[], img=False):
     axes.axis('equal')
     plt.show()
 
-def plot3DJoints(joints, save_pdf=False, pbaspect=False, title=False):
+def plot3DJoints(joints, save_pdf=False,
+                 pbaspect=False, axis_off=False, title=False):
     import mpl_toolkits.mplot3d.axes3d as p3
     
     def getJointColor(j):
@@ -441,8 +499,9 @@ def plot3DJoints(joints, save_pdf=False, pbaspect=False, title=False):
     ax.zaxis.set_major_formatter(FormatStrFormatter('%.1f'))
     if title:
         plt.title(title, fontsize=14)
-#        plt.title(title, fontsize=14, fontweight='bold')
-        
+    if axis_off:
+        ax.axis('off')
+            
     plt.show()
     if save_pdf:
         with PdfPages(save_pdf) as pdf:

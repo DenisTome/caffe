@@ -85,8 +85,8 @@ def preprocessImage(NN, curr_data, batch_size, num_channels):
     
     # manipulate image and joints for caffe
     (img_croppad, joints) = ut.cropImage(img, box_points, joints)
-    (resizedImage, joints) = ut.resizeImage(img_croppad, NN['inputSize'], joints)
-    resizedImage = np.divide(resizedImage, float(256))
+    (resImage, joints) = ut.resizeImage(img_croppad, NN['inputSize'], joints)
+    resizedImage = np.divide(resImage, float(256))
     resizedImage = np.subtract(resizedImage, 0.5)
     
     # generate labels and center channel
@@ -104,7 +104,7 @@ def preprocessImage(NN, curr_data, batch_size, num_channels):
         imgch = np.concatenate((resizedImage, center_channel[:,:,np.newaxis], metadata_ch), axis=2)
     
     imgch = np.transpose(imgch, (2, 0, 1))
-    return (imgch, info)
+    return (imgch, info, resImage)
 
 def restoreSize(channels, channels_size, box_points):
     """Given the channel, it resize and place the channel in the right position
@@ -127,7 +127,8 @@ def postprocessHeatmaps(NN, out, curr_data, info):
     err = ut.computeError(gt, predictions)
     return (predictions, heatMaps, err)
 
-def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False, show=False, stage_3d_err=False):
+def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False,
+                   show=False, stage_3d_err=False, hm_joint=False):
     num_channels = ut.getNumChannelsLayer(net,'data')
     joints = np.array(data['joint_self'])
     
@@ -143,7 +144,7 @@ def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False, show=False
     ut.plt.imsave(save_name, img_saved)
     
     # Extract 2D predictions
-    (imgch, info) = preprocessImage(NN, data, 1, num_channels)
+    (imgch, info, resizedImage) = preprocessImage(NN, data, 1, num_channels)
     ut.netForward(net, imgch)
     img = ut.convertImgCv2(img)
     layer_name = 'Mconv5_stage6_new'
@@ -177,9 +178,11 @@ def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False, show=False
     if astr:
         save_name = output_dir + 'image_3d' + astr + '.pdf'
     ut.plot3DJoints(-mod, save_pdf=save_name)
-#    ut.plot3DJoints(-mod, pbaspect=[1,0.88,1])
+    #ut.plot3DJoints(-mod, pbaspect=[1,0.88,1])
     
     if stage_3d_err:
+        resizedImage = ut.convertImgCv2(resizedImage)/255.0
+                                        
         layers = ['conv7_stage1_new', 'Mconv5_stage2_new',
                   'Mconv5_stage3_new', 'Mconv5_stage4_new',
                   'Mconv5_stage5_new', 'Mconv5_stage6_new']
@@ -187,7 +190,30 @@ def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False, show=False
         for l in range(len(layers)):
             layer_name = layers[l]
             out = ut.getOutputLayer(net, layer_name)
-            (pred, _, err) = postprocessHeatmaps(NN, out, data, info)
+            (pred, heatMaps, err) = postprocessHeatmaps(NN, out, data, info)
+            if hm_joint:
+                # generate heat-maps
+                channels = out.transpose(1,2,0)
+                hm = ut.cv2.resize(channels, (resizedImage.shape[0],resizedImage.shape[0]),
+                                   interpolation = ut.cv2.INTER_LANCZOS4)
+                hm = hm[:,:,hm_joint]
+                ut.plt.imshow(resizedImage)
+                ut.plt.hold(True)
+                ut.plt.imshow(hm,alpha=0.6) #color='Blues')
+                save_name = 'hm_joint_%d_stage_%d.pdf' % (hm_joint, l)
+                ut.plt.axis('off')
+                ut.plt.savefig(output_dir+save_name)
+                ut.plt.close()
+                # generate skeletons
+                save_name = 'img_skel_stage_%d.png' % (l)
+                img_2d_skel = ut.plotImageJoints(img_orig, pred, h=False)
+                new_box_points = box_points.copy()
+                new_box_points[0] += 120
+                new_box_points[2] -= 240
+                new_box_points[1] += 70
+                new_box_points[3] -= 70
+                img_2d_skel = ut.cropImage(img_2d_skel, new_box_points)
+                ut.plt.imsave(output_dir+save_name, img_2d_skel)
             (w, s, mean), (w3d, s3d) = normalise_data(pred.flatten(), w3d=gt3d)
             w = w[np.newaxis,:]
             (a, r) = uc.estimate_a_and_r(w, e, z, default_r[camera], Lambda*weights)
@@ -196,9 +222,9 @@ def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False, show=False
                 (a, res) = uc.reestimate_a(w, e, z, r, default_r[camera], Lambda*weights)
             m = uc.build_and_rot_model(a,e,z,r).squeeze()
             err = cost3d(m, w3d, s3d)
-            print '3D error stage %r: %.2f' % (l, err)
+            print '3D error stage %r: %.2f' % (l, err/17.0)
             save_name = '%sstage_%d_3d.pdf' % (output_dir, l)
-            title = 'Stage %r\nErr: %.2f mm' % (l+1, err)
+            title = 'Stage %r\nErr: %.2f mm' % (l+1, err/17.0)
             ut.plot3DJoints(-m, save_pdf=save_name, title=title)
     
     if proj:
@@ -211,7 +237,7 @@ def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False, show=False
         if astr:
             save_name = output_dir + 'image_2d_proj' + astr + '.png'
         ut.plt.imsave(save_name, img_2d_skel)
-#    return (img, heatMap, img_2d_skel)
+#    return (img, heatMap, pred, img_2d_skel)
 
 def checkFilesExistance(prototxt, caffemodel):
     if not ut.checkFileExists(prototxt):
@@ -232,7 +258,7 @@ def getIndex(data, camera=1, person=9, action=2, fno=0):
 ## SET ENVIRONMENT
 caffemodel = ut.getCaffeCpm() + '/prototxt/caffemodel/manifold_diffarch3/pose_iter_22000.caffemodel'
 prototxt = ut.getCaffeCpm() + '/prototxt/pose_deploy_singleimg.prototxt'
-output_dir = '/home/denitome/Desktop/imgs/'
+output_dir = '/home/denitome/Desktop/imgs/tmp/'
 checkFilesExistance(prototxt, caffemodel)
 
 NN = ut.load_configuration(gpu=True)
@@ -243,7 +269,21 @@ json_file = ut.getCaffeCpm() + '/jsonDatasets/H36M_annotations_testSet.json'
 net = ut.loadNetFromPath(caffemodel, prototxt)
 (data, num_elem) = ut.loadJsonFile(json_file)
 
-idx = getIndex(data, camera=1, person=9, action=14, fno=710)
-executeOnFrame(NN, net, data[idx], output_dir, proj=False,astr='_tmp_stage', show=True, stage_3d_err=True)
+#idx = getIndex(data, camera=1, person=9, action=2, fno=910)
+idx = getIndex(data, camera=1, person=11, action=14, fno=950)
+executeOnFrame(NN, net, data[idx], output_dir, proj=True, astr='_tmp', show=True, stage_3d_err=False)
+
+# TODO: remove
+import getdata as gd
+import upright_cam as uc
+tmp=ut.sio.loadmat(gd.Dpath+'pose_iter_22000_predictions.mat')
+errors_orig = tmp['errors'][0]
+tmp = ut.sio.loadmat('/home/denitome/Desktop/err_pred_proj_2d.mat')
+errors = tmp['err_proj'][0]
+differr = errors_orig-errors
+idx = np.argmax(differr[differr < 35])
+ut.plt.plot(differr)
+
+idx = 39889
 
 

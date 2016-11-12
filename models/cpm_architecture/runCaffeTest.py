@@ -57,6 +57,7 @@ def preprocessImages(NN, data, batch_size, batch_imgch, num_channels):
 def postprocessHeatmaps(NN, batch_out, batch_data, batch_info, batch_size):
     pred = np.zeros((batch_size, NN['njoints']*2))
     err  = np.zeros(batch_size)
+    cov  = np.zeros((batch_size, NN['njoints'],4))
     for b in range(batch_size):
         if (batch_size > 1):
             curr_data = batch_data[b]
@@ -68,11 +69,14 @@ def postprocessHeatmaps(NN, batch_out, batch_data, batch_info, batch_size):
         pred[b] = predictions.flatten()
         gt = ut.filterJoints(curr_data['joint_self'])
         err[b] = ut.computeError(gt, predictions)
-    return (pred, err)
+        for j in range(NN['njoints']):
+            cov[b,j] = ut.findCovariance(out[j])
+    return (pred, err, cov)
 
 def executeOnTestSet(NN, net, data, num_elem, show_iter=20):
     preds  = np.empty((num_elem, NN['njoints']*2))
     errors = np.zeros(num_elem)
+    covs   = np.zeros((num_elem, NN['njoints'],4))
     frame_num = np.zeros(num_elem)
     
     num_channels = ut.getNumChannelsLayer(net,'data')
@@ -102,19 +106,21 @@ def executeOnTestSet(NN, net, data, num_elem, show_iter=20):
         batch_out = ut.getOutputLayer(net, layer_name)
         
         if (curr_batch_size > 0):
-            (b_preds, b_err) = postprocessHeatmaps(NN, batch_out, batch_data, batch_info, curr_batch_size)
+            (b_preds, b_err, b_cov) = postprocessHeatmaps(NN, batch_out, batch_data, batch_info, curr_batch_size)
             preds[i:i+curr_batch_size] = b_preds
             errors[i:i+curr_batch_size] = b_err
+            covs[i:i+curr_batch_size] = b_cov
             frame_num[i:i+curr_batch_size] = b_fno
         else:
-            (b_preds, b_err) = postprocessHeatmaps(NN, batch_out, batch_data, batch_info, 1)
+            (b_preds, b_err, b_cov) = postprocessHeatmaps(NN, batch_out, batch_data, batch_info, 1)
             preds[i] = b_preds
             errors[i] = b_err
+            covs[i] = b_cov
             frame_num[i] = b_fno
         i += batch_size
         p += 1
             
-    return (preds, errors, frame_num)
+    return (preds, errors, covs, frame_num)
 
 def getIter(item):
     regex_iteration = re.compile('_predictions_part(\d+).mat')
@@ -195,14 +201,14 @@ def main():
         return
     
     # run model on test set
-    (preds, errors, frame_num) = executeOnTestSet(NN, net, data[idx_part], elems_per_part)
+    (preds, errors, covs, frame_num) = executeOnTestSet(NN, net, data[idx_part], elems_per_part)
     print 'Mean error on the test set: %r' % errors.mean()
     
     # save results
     if (args.num_parts > 1):
         output_file = re.sub('\.caffemodel', '_predictions_part', args.caffemodel)
         output_file += '%d.mat' % (int(args.run_part))
-    ut.sio.savemat(output_file, {'preds':preds,'errors':errors,'frame_num':frame_num})
+    ut.sio.savemat(output_file, {'preds':preds,'errors':errors,'covs':covs,'frame_num':frame_num})
 
 if __name__ == '__main__':
     main()
