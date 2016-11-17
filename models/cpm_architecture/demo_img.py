@@ -58,6 +58,25 @@ def normalise_data(w, w3d=[]):
     
     return (d2, m2, mean), (w3d, m3)
 
+def normalise_data2(d2):
+    """Normalise data by centering all the 2d skeletons (0,0) and by rescaling
+    all of them such that the height is 2.0 (expressed in meters).
+    """
+    
+    def centre_all(m):
+        if m.ndim == 2:
+            return centre(m)
+        return (m.transpose(2, 0, 1) - m.mean(2)).transpose(1, 2, 0), m.mean(2)
+    
+    d2, mean = centre_all(d2.transpose(0,2,1))
+    m2=d2[:,1,:].min(1)/2.0 #Height normalisation
+    m2=m2-d2[:,1,:].max(1)/2.0    
+    crap=m2==0
+    m2[crap]=1.0
+    d2/= m2[:,np.newaxis,np.newaxis]
+    
+    return (d2, m2, mean)
+
 def cost3d(m,gt,gts):
     out=np.sqrt(((gt-m)**2).sum(0)).mean(-1)*np.abs(gts)
     return out
@@ -68,6 +87,14 @@ def project2D(r, z, a, e, R_c, scale):
     mod = uc.build_model(a, e, z)
     p = uc.project_model(mod, R_c, r)
     p *= scale
+    return p
+
+def project2D2(r, z, a, e, R_c, scale):
+    """Project 3D points into 2D and return them in the same scale as the given 
+    2D predicted points."""
+    mod = uc.build_model(a, e, z)
+    p = uc.project_model(mod, R_c, r)
+    p *= scale[:,np.newaxis,np.newaxis]
     return p
         
 def preprocessImage(NN, curr_data, batch_size, num_channels):
@@ -190,8 +217,13 @@ def executeOnFrame(NN, net, data, output_dir, proj=False, astr=False,
         for l in range(len(layers)):
             layer_name = layers[l]
             out = ut.getOutputLayer(net, layer_name)
-            (pred, heatMaps, err) = postprocessHeatmaps(NN, out, data, info)
+            (pred, _, _) = postprocessHeatmaps(NN, out, data, info)
             if hm_joint:
+                # save heat-map
+                heatMap = ut.cv2.resize(out[hm_joint], (NN['inputSize'],NN['inputSize']),
+                                        interpolation = ut.cv2.INTER_LANCZOS4)
+                save_name = 'hm_joint_%d_stage_%d.png' % (hm_joint, l)
+                ut.plt.imsave(output_dir+save_name, heatMap)
                 # generate heat-maps
                 channels = out.transpose(1,2,0)
                 hm = ut.cv2.resize(channels, (resizedImage.shape[0],resizedImage.shape[0]),
@@ -268,22 +300,67 @@ ut.setCaffeMode(NN['GPU'])
 json_file = ut.getCaffeCpm() + '/jsonDatasets/H36M_annotations_testSet.json'
 net = ut.loadNetFromPath(caffemodel, prototxt)
 (data, num_elem) = ut.loadJsonFile(json_file)
+    
+idx = getIndex(data, camera=1, person=9, action=2, fno=10)
+#idx = getIndex(data, camera=1, person=11, action=14, fno=950)
+executeOnFrame(NN, net, data[idx], output_dir, proj=True, astr='_tmp', show=True, stage_3d_err=True, hm_joint=6)
 
-#idx = getIndex(data, camera=1, person=9, action=2, fno=910)
-idx = getIndex(data, camera=1, person=11, action=14, fno=950)
-executeOnFrame(NN, net, data[idx], output_dir, proj=True, astr='_tmp', show=True, stage_3d_err=False)
+#tmp_data = data
+#data=data[idx]
 
 # TODO: remove
-import getdata as gd
-import upright_cam as uc
-tmp=ut.sio.loadmat(gd.Dpath+'pose_iter_22000_predictions.mat')
-errors_orig = tmp['errors'][0]
-tmp = ut.sio.loadmat('/home/denitome/Desktop/err_pred_proj_2d.mat')
-errors = tmp['err_proj'][0]
-differr = errors_orig-errors
-idx = np.argmax(differr[differr < 35])
-ut.plt.plot(differr)
 
-idx = 39889
+##differr = errors_orig-errors
+##idx = np.argmax(differr[differr < 31.76])
+#phi = np.log(1+(errors_orig -errors)/errors3d)
+#idx = np.where(phi == phi[phi < 0.84].max())[0][0]
+#executeOnFrame(NN, net, data[idx], output_dir, proj=True, astr=('_%d' % idx), show=True, stage_3d_err=False)
+#ut.plt.plot(phi)
 
+#import getdata as gd
+#import upright_cam as uc
+#tmp=ut.sio.loadmat(gd.Dpath+'pose_iter_22000_predictions.mat')
+#preds = tmp['preds']
+#errors_orig = tmp['errors'][0]
+#tmp = ut.sio.loadmat('/home/denitome/Desktop/err_pred_proj_2d.mat')
+#tmp2 = ut.sio.loadmat('/home/denitome/Desktop/err_pred_3d.mat')
+#errors = tmp['err_proj'][0]
+#errors3d = tmp2['err_3d'][0]
+#
+#(default_r, e, z, weights) = load_parameters()
+#phi = (errors_orig - errors)#/errors3d
+#Lambda = 0.05
+#w = 1
+#tmp_idx = np.where((errors3d < 250) & (errors3d > 100))[0]
+#idxs = np.argsort(phi[tmp_idx])
+#for idx in tmp_idx[idxs]:
+#    print 'Idx: %d' % idx
+#    camera = int(data[idx]['camera']) - 1
+#    gt3d = ut.filterJoints(data[idx]['joint_self_3d'])
+#    pred = ut.xyJoints(preds[idx])
+#    img_orig = ut.cv2.imread(data[idx]['img_paths'])
+#    joints = np.array(data[idx]['joint_self'])
+#    box_points = ut.getBoundingBox(joints, ut.getCenterJoint(joints),
+#                               75, img_orig.shape[1], img_orig.shape[0])
+#    img = ut.cropImage(img_orig, box_points)
+#    img = ut.convertImgCv2(img)
+#    img_2d_skel = ut.plotImageJoints(img_orig, pred, h=True)
+#    img_2d_skel = ut.cropImage(img_2d_skel, box_points)
+#    (w, s, mean), (w3d, s3d) = normalise_data(pred.flatten(), w3d=gt3d)
+#    w = w[np.newaxis,:]
+#    (a, r) = uc.estimate_a_and_r(w, e, z, default_r[camera], Lambda*weights)
+#    for j in xrange(10):
+#        r = uc.reestimate_r(w, z, a, e, default_r[camera], r)
+#        (a, res) = uc.reestimate_a(w, e, z, r, default_r[camera], Lambda*weights)
+#    points = project2D(r, z, a, e, default_r[camera], s).squeeze()
+#    points += mean[:,np.newaxis]
+#    img_2d_skel_proj = ut.plotImageJoints(img_orig, points.T, h=True)
+#    img_2d_skel_proj = ut.cropImage(img_2d_skel_proj, box_points)
+#    ut.plt.subplot(121)
+#    ut.plt.imshow(img_2d_skel), ut.plt.title('pred')
+#    ut.plt.subplot(122)
+#    ut.plt.imshow(img_2d_skel_proj), ut.plt.title('proj')
+#    ut.plt.waitforbuttonpress()
+    
 
+    
