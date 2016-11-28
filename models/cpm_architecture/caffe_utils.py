@@ -16,6 +16,7 @@ import caffe
 from scipy.stats import multivariate_normal
 import json
 
+
 def load_configuration(offset=25, samplingRate=5, inputSize=368, outputSize=46,
                        njoints=17, sigma=7, sigma_center=21, stride=8, gpu=True):
     """Set-up default configurations"""
@@ -30,6 +31,7 @@ def load_configuration(offset=25, samplingRate=5, inputSize=368, outputSize=46,
     NN['stride'] = stride
     NN['GPU'] = gpu
     return NN
+
 
 def loadNet(folder_name, file_detail):
     """Load caffe model"""
@@ -436,7 +438,7 @@ def plotJoints(joints, joints2=[], img=False):
     axes.axis('equal')
     plt.show()
 
-def plot3DJoints(joints, save_pdf=False,
+def plot3DJoints(joints, save_pdf=False, save_img=False, axis_style=True,
                  pbaspect=False, axis_off=False, title=False):
     import mpl_toolkits.mplot3d.axes3d as p3
     
@@ -486,17 +488,18 @@ def plot3DJoints(joints, save_pdf=False,
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
-    ax.xaxis.labelpad = 20
-    ax.yaxis.labelpad = 20
-    ax.zaxis.labelpad = 20
-    xticks_v = [joints[0].min()+0.1*diff_x, 0, joints[0].max()-0.1*diff_x]
-    yticks_v = [joints[1].min()+0.1*diff_y, 0, joints[1].max()-0.1*diff_y]
-    rot = 45
-    plt.xticks(xticks_v, rotation=rot)
-    plt.yticks(yticks_v, rotation=-rot)
-    ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-    ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-    ax.zaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+    if axis_style:
+        ax.xaxis.labelpad = 20
+        ax.yaxis.labelpad = 20
+        ax.zaxis.labelpad = 20
+        xticks_v = [joints[0].min()+0.1*diff_x, 0, joints[0].max()-0.1*diff_x]
+        yticks_v = [joints[1].min()+0.1*diff_y, 0, joints[1].max()-0.1*diff_y]
+        rot = 45
+        plt.xticks(xticks_v, rotation=rot)
+        plt.yticks(yticks_v, rotation=-rot)
+        ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        ax.zaxis.set_major_formatter(FormatStrFormatter('%.1f'))
     if title:
         plt.title(title, fontsize=14)
     if axis_off:
@@ -507,6 +510,72 @@ def plot3DJoints(joints, save_pdf=False,
         with PdfPages(save_pdf) as pdf:
             pdf.savefig()
             plt.close()
+    if save_img:
+        fig.savefig(save_img)
+
+def plot3DJoints_for_video(joints, save_pdf=False, save_img=False, axis_style=True,
+                 pbaspect=False, axis_off=False, title=False, max_axis=False):
+    import mpl_toolkits.mplot3d.axes3d as p3
+    
+    def getJointColor(j):
+        colors = [(0,0,0),(255,0,255),(0,0,255),(0,255,255),(255,0,0),(0,255,0)]
+        c = 0
+        if j in range(1,4):
+            c = 1
+        if j in range(4,7):
+            c = 2
+        if j in range(9,11):
+            c = 3
+        if j in range(11,14):
+            c = 4
+        if j in range(14,17):
+            c = 5
+        return colors[c]
+    
+    joints[2] -= joints[2].min()
+    fig = plt.figure()
+    ax = fig.gca(projection = '3d')
+    conn = getConnections()
+    for c in conn:
+        col = '#%02x%02x%02x' % getJointColor(c[0])
+        ax.plot([joints[0,c[0]], joints[0,c[1]]],
+                [joints[1,c[0]], joints[1,c[1]]],
+                [joints[2,c[0]], joints[2,c[1]]], c=col)
+    for j in range(joints.shape[1]):
+        col = '#%02x%02x%02x' % getJointColor(j)
+        ax.scatter(joints[0,j], joints[1,j], joints[2,j], c=col, marker='o', edgecolor=col)
+#    p_v_x = 1#2
+#    p_v_y = 1#3
+#    diff_x = joints[0].max() - joints[0].min()
+#    diff_y = joints[1].max() - joints[1].min()
+#    diff_z = joints[2].max() - joints[2].min()
+#    prop_x = diff_x*p_v_x/diff_z
+#    prop_y = diff_y*p_v_y/diff_z
+    ax = fig.gca(projection = '3d')
+    ax.pbaspect = [1,1,1]
+    
+    smallest = 0
+    largest = 0
+#    smallest = joints.min()
+    largest = joints.max()
+    if max_axis:
+        largest = max_axis
+    ax.set_xlim3d(-largest/2, largest/2)
+    ax.set_ylim3d(-largest/2, largest/2)
+    ax.set_zlim3d(smallest, largest)
+    
+    # Defining style
+    ax.tick_params(axis='both', which='major', labelsize=9)
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+                
+    # plt.show()
+    if save_img:
+        fig.savefig(save_img)
+    plt.close(fig)
+    plt.close()
+    plt.close('all')    
     
 def convertImgCv2(img):
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
