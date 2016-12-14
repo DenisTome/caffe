@@ -330,13 +330,13 @@ layer {
   }
 }
 layer {
-  name: "manifolds_stage1"
+  name: "probmodel_stage1"
   type: "Python"
   bottom: "conv7_stage1_new"
   bottom: "metadata"
-  top: "manifolds_stage1"
+  top: "probmodel_stage1"
   python_param {
-    module: "newheatmaps"
+    module: "prob_model"
     layer: "MyCustomLayer"
     param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1, \"Lambda\": 0.050 }"
   }
@@ -345,7 +345,7 @@ layer {
   name: "merge_hm_stage1"
   type: "Python"
   bottom: "conv7_stage1_new"
-  bottom: "manifolds_stage1"
+  bottom: "probmodel_stage1"
   top: "merge_hm_stage1"
   python_param {
     module: "processheatmaps"
@@ -687,13 +687,13 @@ layer {
   }
 }
 layer {
-  name: "manifolds_stage2"
+  name: "probmodel_stage2"
   type: "Python"
   bottom: "Mconv5_stage2_new"
   bottom: "metadata"
-  top: "manifolds_stage2"
+  top: "probmodel_stage2"
   python_param {
-    module: "newheatmaps"
+    module: "prob_model"
     layer: "MyCustomLayer"
     param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1, \"Lambda\": 0.050 }"
   }
@@ -702,7 +702,7 @@ layer {
   name: "merge_hm_stage2"
   type: "Python"
   bottom: "Mconv5_stage2_new"
-  bottom: "manifolds_stage2"
+  bottom: "probmodel_stage2"
   top: "merge_hm_stage2"
   python_param {
     module: "processheatmaps"
@@ -915,13 +915,13 @@ layer {
   }
 }
 layer {
-  name: "manifolds_stage3"
+  name: "probmodel_stage3"
   type: "Python"
   bottom: "Mconv5_stage3_new"
   bottom: "metadata"
-  top: "manifolds_stage3"
+  top: "probmodel_stage3"
   python_param {
-    module: "newheatmaps"
+    module: "prob_model"
     layer: "MyCustomLayer"
     param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1, \"Lambda\": 0.050 }"
   }
@@ -930,7 +930,7 @@ layer {
   name: "merge_hm_stage3"
   type: "Python"
   bottom: "Mconv5_stage3_new"
-  bottom: "manifolds_stage3"
+  bottom: "probmodel_stage3"
   top: "merge_hm_stage3"
   python_param {
     module: "processheatmaps"
@@ -1143,13 +1143,13 @@ layer {
   }
 }
 layer {
-  name: "manifolds_stage4"
+  name: "probmodel_stage4"
   type: "Python"
   bottom: "Mconv5_stage4_new"
   bottom: "metadata"
-  top: "manifolds_stage4"
+  top: "probmodel_stage4"
   python_param {
-    module: "newheatmaps"
+    module: "prob_model"
     layer: "MyCustomLayer"
     param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1, \"Lambda\": 0.050 }"
   }
@@ -1158,7 +1158,7 @@ layer {
   name: "merge_hm_stage4"
   type: "Python"
   bottom: "Mconv5_stage4_new"
-  bottom: "manifolds_stage4"
+  bottom: "probmodel_stage4"
   top: "merge_hm_stage4"
   python_param {
     module: "processheatmaps"
@@ -1371,13 +1371,13 @@ layer {
   }
 }
 layer {
-  name: "manifolds_stage5"
+  name: "probmodel_stage5"
   type: "Python"
   bottom: "Mconv5_stage5_new"
   bottom: "metadata"
-  top: "manifolds_stage5"
+  top: "probmodel_stage5"
   python_param {
-    module: "newheatmaps"
+    module: "prob_model"
     layer: "MyCustomLayer"
     param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 1, \"max_area\": 100, \"percentage_max\": 3, \"train\": 1, \"Lambda\": 0.050 }"
   }
@@ -1386,7 +1386,7 @@ layer {
   name: "merge_hm_stage5"
   type: "Python"
   bottom: "Mconv5_stage5_new"
-  bottom: "manifolds_stage5"
+  bottom: "probmodel_stage5"
   top: "merge_hm_stage5"
   python_param {
     module: "processheatmaps"

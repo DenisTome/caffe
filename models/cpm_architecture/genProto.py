@@ -99,7 +99,7 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             last_layer = 'pool%d_stage%d' % (pool_counter, stage)
             pool_counter += 1
         elif layername[l] == 'M':
-            last_manifold = 'manifolds_stage%d' % stage
+            last_manifold = 'probmodel_stage%d' % stage
             last_merg = 'merge_hm_stage%d' % stage
             debug_mode = 0
 #            if (stage == 5):
@@ -107,13 +107,17 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             manifold_current_stage = True
             if (stage >= 4):
                 merge_init_avg = True
+            
+            # TODO: remove
+            if stage==5:
+                debug_mode = 1
             # TODO: change it back
 #            if stage == 4:
 #                debug_mode = 4
             parameters = '{"njoints": 17,"sigma": 1, "debug_mode": %r, "max_area": 100, "percentage_max": 3, "train": %u, "Lambda": %.3f }' % (debug_mode, not deploy, 0.05)
             # DONE: change it back
             # if manifold_current_stage:
-            n.tops[last_manifold] = L.Python(n.tops[last_layer],n.tops[label_name[2]],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str=parameters))#,loss_weight=1)
+            n.tops[last_manifold] = L.Python(n.tops[last_layer],n.tops[label_name[2]],python_param=dict(module='prob_model',layer='MyCustomLayer',param_str=parameters))#,loss_weight=1)
 #            n.tops[last_manifold] = L.Python(n.tops[label_name[1]],n.tops[label_name[2]],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str=parameters))#,loss_weight=1)
             init_str = 'zero'            
             if merge_init_avg:
@@ -239,7 +243,7 @@ if __name__ == "__main__":
                         weight_decay=0.0005, lr_policy_fixed=False, disp_iter=5,
                         snapshot=snapshot, gpu=True)
 
-    d_caffemodel = '%s/caffemodel/manifold_diffarch3' % directory # the place you want to store your caffemodel
+    d_caffemodel = '%s/caffemodel/prob_model' % directory # the place you want to store your caffemodel
 #    d_caffemodel = '%s/caffemodel/tmp' % directory
 
     # num_parts and np_in_lmdb are two parameters that are used inside the framework to move from one

@@ -27,7 +27,7 @@ class MyCustomLayer(caffe.Layer):
         """Load trained parameters and camera rotation matrices"""
         Dpath = '%s/models/cpm_architecture/data/' % lib_path
         par   = sio.loadmat(Dpath+'camera_param.mat')
-        train = sio.loadmat(Dpath + 'train_basis_allactions.mat')
+        # train = sio.loadmat(Dpath + 'train_basis_allactions.mat')
         R    = np.empty((4,3,3))
         R[0] = par['c1'][0,0]['R']
         R[1] = par['c2'][0,0]['R']
@@ -59,7 +59,7 @@ class MyCustomLayer(caffe.Layer):
         self.percentage_max = yaml.load(self.param_str)["percentage_max"]*0.01
         self.train = bool(yaml.load(self.param_str)["train"])
         self.Lambda = yaml.load(self.param_str)["Lambda"]
-        (self.default_r, self.e, self.mu, self.sigma) = self.load_parameters()
+        (self.default_r, self.e, self.mu, self.sigma_model) = self.load_parameters()
 
         # check input dimension
         if (len(bottom) != 2):
@@ -107,7 +107,7 @@ class MyCustomLayer(caffe.Layer):
         hmap = np.multiply(tmp, np.sqrt(np.power(2*np.pi,2)*np.linalg.det(Sigma)))
         return hmap
 
-    def generateHeatMaps(self, points, cov_matrices):
+    def generateHeatMaps(self, points, cov_matrices=False):
         """Generate heat-maps for all the joint in the skeleton."""
         heatMaps = np.zeros((self.num_channels, self.input_size, self.input_size))
         sigma_sq = np.power(self.sigma,2)
@@ -208,7 +208,7 @@ class MyCustomLayer(caffe.Layer):
                         scale_mean=0.0016 * 1.8 * 1.2, scale_std=1.2 * 0, cap_scale=-0.00129):
         """Quick switch to allow reconstruction at unknown scale
         returns a,r and scale"""
-        s = np.empty((sigma2.shape[0], sigma.shape[1] + 1))
+        s = np.empty((sigma2.shape[0], sigma2.shape[1] + 1))
         s[:, 0] = scale_std
         s[:, 1:] = sigma2
         s[:, 1:-1] *= scale
@@ -272,7 +272,7 @@ class MyCustomLayer(caffe.Layer):
 
     def create_rec(self, w2, mu, e, cam, sigma, weights, sigma_scaling=5.2, res_weight=1):
         from numpy.core.umath_tests import matrix_multiply
-        res, a, r, scale = affine_estimate(w2, mu, e, cam, sigma, scale=sigma_scaling, weights=weights,
+        res, a, r, scale = self.affine_estimate(w2, mu, e, cam, sigma, scale=sigma_scaling, weights=weights,
                                            depth_reg=0, cap_scale=-0.001, scale_mean=-0.003)
         Lambda = sigma
         remaining_dims = 3 * w2.shape[2] - e.shape[1]
@@ -319,7 +319,7 @@ class MyCustomLayer(caffe.Layer):
 
         # compute parameters
         weights = np.ones_like(w)
-        points = self.create_rec(w, self.mu, self.e, default_r[camera], self.sigma, weights)[0]
+        points = self.create_rec(w, self.mu, self.e, self.default_r[camera], self.sigma_model, weights)[0]
 
         points *= s
         points += mean[:, np.newaxis]
@@ -347,8 +347,9 @@ class MyCustomLayer(caffe.Layer):
         for b in range(self.batch_size):
             (_, camera, _, _) = self.extractMetadata(metadata[b])
             # get new points
-            (points, cov_matrices) = self.manifoldDataConversion(input_heatMaps[b], camera)
-            heatMaps[b] = self.generateHeatMaps(points, cov_matrices)
+            points  = self.manifoldDataConversion(input_heatMaps[b], camera)
+            # TODO: remove this part
+            heatMaps[b] = self.generateHeatMaps(points, cov_matrices=False)
 
             if (self.debug_mode):
                 for j in range(self.num_channels):
