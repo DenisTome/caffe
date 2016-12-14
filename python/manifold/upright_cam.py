@@ -8,11 +8,18 @@ Created on Sat Jan  2 15:06:58 2016
 import numpy as np
 import segmentation as sg
 from numpy.core.umath_tests import matrix_multiply
-from upright_fast import reestimate_r, reestimate_r_old, reestimate_r3d
+from upright_fast import (reestimate_r,  weighted_reestimate_r, reestimate_r3d,
+                          estimate_a_and_r_with_depth,
+                          pick_e,
+                          estimate_a_and_r_with_weights,
+                          estimate_a_and_r_with_scale,
+                          estimate_a_and_r_with_weights_fixed_scale
+                          )
 # w, gt=gd.load_string('walking')
-import ceres
+# import ceres
 id3=np.identity(3)
 
+    
 # w= gd.load_ravi_w('Real_Seq/Face_Sequence')
 # lab,w,gt=stack_strings(( 'drink', 'pickup', 'stretch', 'yoga'))
 def estimate_rot_rigid(xzdat):
@@ -84,7 +91,7 @@ def estimate_r(xzdat, xzshape):
     rot = u / norm
     return rot
 
-def estimate_a_and_r(w,e,s0,camera_r=False,Lambda=False):
+def estimate_a_and_r_old(w,e,s0,camera_r=False,Lambda=False,weights=False):
     """So local optima are a problem in general.
     However:
         1. This problem is convex in a but not in r, and
@@ -99,12 +106,14 @@ def estimate_a_and_r(w,e,s0,camera_r=False,Lambda=False):
     check=np.arange(0,1,0.01)*2*np.pi
     a=np.empty((check.size,frames,basis))
     res=np.empty((check.size,frames))
+    # call reestimate_a 100 times
     for i in xrange(check.size):
         c=check[i]
         r=np.empty((2,w.shape[0]))
         r[0]=np.sin(c)
         r[1]=np.cos(c)
-        a[i],res[i]=reestimate_a(w, e, s0, r,camera_r,Lambda)
+        a[i],res[i]=reestimate_a(w, e, s0, r,camera_r,Lambda,weights)
+    #find and return best coresponding solution
     best=np.argmin(res,0)
     a=a[(best, np.arange(frames))]
     theta=check[best]
@@ -113,7 +122,7 @@ def estimate_a_and_r(w,e,s0,camera_r=False,Lambda=False):
     r[1]=np.cos(theta)    
     return a,r
     
-def reestimate_a(w, e, s0, rot,camera_r=False,Lambda=False):
+def reestimate_a(w, e, s0, rot,camera_r=False,Lambda=False,weights=False):
     """Reestimate a from rest shape, rotation, and basis coefficients
     as a least squares problem.
     solution minimises 
@@ -132,20 +141,26 @@ def reestimate_a(w, e, s0, rot,camera_r=False,Lambda=False):
 
     P= matrix_multiply(camera_r[np.newaxis,:2], mat_r)
     #For each frame project the shape and subtract that from the measurement matrix
+    #print P[0]
     res=w-P.dot(s0)
+    if weights is not False:
+        res*=weights
     #vis.scatter2d(P.dot(s0)[0],w[0])
     res=res.reshape(frames,points*2)
+    
     if Lambda is not False:
         res=np.hstack((res,np.zeros((frames,basis))))
     #compute the rotated e basis for each frame
     # output is frames,basis, 2, points
-    # input is frames, 2,3 + basis,3,points
+    # input is frames, 2,3 + basis,3,points  
     re=np.einsum('ilk,jkp',P,e).reshape(frames,basis,2*points)
+    if weights is not False:
+        re*=weights.reshape(weights.shape[0])[:,np.newaxis]
     re2=np.empty((frames,basis,2*points+basis))
     if Lambda is not False:
         re2[:,:,:2*points]=re
         re2[:,:,2*points:]=np.diag(Lambda)
-        re=re2
+        re=re2    
     #Now solve for ||res-a.dot(re)||^2_2
     a=np.empty((frames,basis))
     a.fill(np.NaN)
@@ -159,6 +174,7 @@ def reestimate_a(w, e, s0, rot,camera_r=False,Lambda=False):
             #print aa
         #a[i]=aa
     #vis.scatter2d(P.dot(s0+(a[0,:,np.newaxis,np.newaxis]*e).sum(0))[0],w[0])
+
     return a,residue
     
 def reestimate_a_old(w, e, s0,rot):
@@ -403,7 +419,8 @@ def PCA(data, rank):
     return mean, u*d, v*d[:, np.newaxis]
 
 def PCA2(data, rank):
-    "returns unit v basis"
+    """PCA
+    returns mu, a vector and unit e basis such that data ~ mu +a.e"""
     mean = data.mean(0)
     res = data - mean
     u, d, v = np.linalg.svd(res, False)
@@ -412,6 +429,68 @@ def PCA2(data, rank):
     v = v[:rank]
 
     return mean, u*d, v
+
+
+def PPCA(data, rank):
+    """Probalistic PCA
+    returns mu, a vector and unit e basis such that data ~ mu +a.e
+    and rank+1 weights describing 1./ sigma^2 estimators"""
+    mean = np.average(data,0)
+    res = data - mean
+    cov=np.cov(res.T)
+    assert(cov.shape[0]==data.shape[1])
+    d,v=np.linalg.eig(cov)
+    #u, d, v = np.linalg.svd(res*weights[:,np.newaxis], False)
+    #u = u[:, :rank]
+    d=np.real(d)
+    v=np.real(v)
+    v = v.T[:rank]
+    sigma=d[:rank+1]
+    sigma[-1]=d[rank:].mean()
+    sigma=sigma**-0.5
+    d = d[:rank]
+    u=res.dot(v.T)
+    return mean, u, v, sigma
+
+def weighted_PPCA(data,weights, rank):
+    """Weighted Probalistic PCA
+    returns mu, a vector and unit e basis such that data ~ mu +a.e
+    and rank+1 weights describing 1./ sigma^2 estimators"""
+    mean = np.average(data,0,weights)
+    res = data - mean
+    cov=np.cov(res.T,aweights=weights)
+    assert(cov.shape[0]==data.shape[1])
+    d,v=np.linalg.eig(cov)
+    v=np.real(v)
+    d=np.real(d)
+    #u, d, v = np.linalg.svd(res*weights[:,np.newaxis], False)
+    #u = u[:, :rank]
+    v = v.T[:rank]
+    sigma=d[:rank+1]
+    sigma[-1]=d[rank:].mean()
+    sigma=sigma**-0.5
+    d = d[:rank]
+    u=res.dot(v.T)
+    return mean, u, v, sigma
+
+
+def GPCA(data, rank):
+    """Gaussian PCA
+    returns mu, a vector and unit e basis such that data ~ mu +a.e
+    and rank+1 weights describing 1./ sigma^2 estimators
+    Differs from PPCA in that it chooses final weight to preserve Gaussian 
+    density else where """
+    mean = data.mean(0)
+    res = data - mean
+    u, d, v = np.linalg.svd(res, False)
+    u = u[:, :rank]
+    weights=d[:rank+1]
+    weights[-1]=np.sqrt((d[rank:]**2).mean())
+    weights=weights**-1
+    #d = d
+    v = v[:rank]
+    u*=d[:rank]
+    return mean, u, v, d, weights
 
 def get_basis(data, rank):
     mean = data.mean(0)
@@ -476,6 +555,10 @@ def parameter3d_one_shot_old(dat,rank):
 def upgrade_r(r):
     """Upgrades complex parameterisation of planar rotation to tensor containing
     per frame 3x3 rotation matrices"""
+    assert(r.ndim==2)
+    #print r.shape
+    assert(r.shape[1]==2) # Technically optional assert, but if this fails 
+                          # Data is probably transposed
     assert(np.all(np.isfinite(r)))
     norm=np.sqrt((r[:,:2]**2).sum(1))
     assert(np.all(norm>0))
@@ -647,6 +730,84 @@ def parameter3d_one_shot(dat,rank):
 
             #print a.shape, e.shape
     return z, a, e, inv_rot
+    
+def parameter3d_prob_one_shot(dat,rank):
+    """ Returns: inv_rot, z, a, e
+
+    Conceptually working in 3d makes the whole thing much easier.
+    We no long run the risk of overfitting, and do not have to solve the
+    problem of
+    reconstruction under incomplete data, as such the problem can be split into
+    biconvex components.\n
+    1. Estimate (inverse)rotations that map the data onto the model.\n
+    2. Perform PCA on the data.\n
+    \n
+    However, there are certain properties that mean it's more advisable to
+    perform carefully controlled initialisation, and not use
+    parameter_refine3d. Instead we estimate rotations once for each rank
+    by intialising with the previous frame. and we anneal the rank starting
+    with 1 and slowly increasing it until it reaches the desired solution."""
+    assert(rank >= 0)
+#    import ceres,vis
+    dat=np.ascontiguousarray(dat)
+
+    #dat=dat[0:1]
+    xz = estimate_rot_rigid3d(dat[:, :2])[2]
+    z=np.empty((3, xz.shape[1]))
+    z[:2] = xz
+    z[2] = dat[:, 2].mean(0)
+    #vis.scatter3d(z)
+    frames = dat.shape[0]
+    a = np.zeros((frames, 1))
+    e = np.zeros((1, 3, dat.shape[2]))
+    r=np.empty((dat.shape[0],3,3))
+    r[:]=np.identity(3)
+    print "0:" +str(error3d(dat,r,z,a,e))
+    inv_rot=new_rot (r,dat,a,e,z)
+    shape = np.empty((frames, 3, dat.shape[-1]))
+    #d=dat.reshape(frames*3,dat.shape[-1])
+
+    mask=np.ones_like(dat)
+    for i in xrange(1,1+rank):
+        for j in xrange(10):
+            #print str(i)+" "+str(j)+" a: " +str(error3d(dat,inv_rot,z,a,e))
+            matrix_multiply(inv_rot, dat, shape)
+            assert(np.all(np.isfinite(shape)))
+            mean, a, e, sigma2 = PPCA(shape.reshape(frames, -1),i)
+            z = mean.reshape(3, -1)
+            e = e.reshape(-1, 3, z.shape[1])
+            s=np.real(sigma2[:-1])**-2
+            a*=(s/(0.005+s))
+            print str(i)+" "+str(j)+" b: "+str(error3d(dat,inv_rot,z,a,e))
+            inv_rot = new_rot(inv_rot,dat, a, e,z)
+        #print str(i)+" c*: " +str(error3d(dat,inv_rot,z,a,e))
+        # TODO: restore
+        if False: #i==1 : #or i==rank:
+            zt=np.ascontiguousarray(z.T)
+            ee=np.ascontiguousarray(e.transpose(2,0,1))
+            r=np.ascontiguousarray(inv_rot.transpose(0,2,1)[:, :2,0])
+
+            ceres.ba_e3d(dat, mask, r, zt, a, ee,
+                         solver_type=0,preconditioner=3,verbosity=0,model_type=2,
+                         linear_solver=1)
+
+            e=ee.transpose(1,2,0)
+            inv_rot=upgrade_r(r).transpose(0,2,1)
+            z=zt.T
+            print str(i)+" c: " +str(error3d(dat,inv_rot,z,a,e))
+
+
+    matrix_multiply(inv_rot, dat, shape)
+    assert(np.all(np.isfinite(shape)))
+    mean, a, e = PCA2(shape.reshape(frames, -1),rank)
+    z = mean.reshape(3, -1)
+    e = e.reshape(-1, 3, z.shape[1])
+    print str(i)+" d: " +str(error3d(dat,inv_rot,z,a,e))
+
+
+            #print a.shape, e.shape
+    return z, a, e, inv_rot
+    
 def parameter_refine3d(dat, z, a, e, inv_rot, its=10,
                        weights=False, debug=False):
     """ Returns: inv_rot, z, a, e
@@ -770,19 +931,24 @@ def build_model(a, e, s0=False):
     assert(e.shape[1]==3)
     assert(a.shape[1]==e.shape[0])
     out = a.dot(e.reshape(a.shape[1], -1)).reshape(a.shape[0], 3, -1)
+    from getdata import renorm_gt as renorm
+
     if s0 is False:
+        out,_=renorm(out)
         return out
     else:
-        return out + s0
+        out,_=renorm(out+s0)
+
+        return out
 
 
 
 id3=np.identity(3)
-def build_and_rot_model(a, e, s0, r):
+def build_and_rot_model(a, e, s0, r):   
     r2=upgrade_r(r.T).transpose(0,2,1)
-    #rot=matrix_multiply(camera_r[np.newaxis,:],r2)
     mod = build_model(a, e, s0)
-    return matrix_multiply(r2, mod)
+    mod=matrix_multiply(r2, mod)
+    return mod
 
 
 def project_model(mod, R_c, rot):
@@ -806,7 +972,7 @@ def better_rec(w,est):
 def make_better_rec(w_true, basis):
     #z_init, c_init, a_init, e_init = planar_rec_PCA(w_true, basis)
     r, z, a, e = find_parameters(w_true, basis,compactness=0.1,its=5)
-    est = build_and_rot_model(a, e, z)
+    est = build_and_rot_model(a, e, z,r)
     return better_rec(w_true, est), r
 
 
@@ -1000,9 +1166,9 @@ def solve(w, s,a0, e, r, gnhood, MDL=0, ex_weight=0.25,
                         np.ones(unary[0].shape[0]) * MDL,
                         interior,
                         exterior_weight=ex_weight)#0.25)  # 0.25)
-        if visualise:
-            import vis
-            vis.nhood_graphs(w, gt, est, gnhood[:, :5], interior, True)
+        #if visualise:
+            #import vis
+            #vis.nhood_graphs(w, gt, est, gnhood[:, :5], interior, True)
         #print cost(multi)
         global old_m
         old_m=multi
@@ -1091,11 +1257,30 @@ def solve(w, s,a0, e, r, gnhood, MDL=0, ex_weight=0.25,
 
 
 
-def crappy_rec(interior,s,a,e):
+def hard_rec(interior,s,a,e):
     """performs reconstruction via hard assignment to interior models"""
+    assert(interior.shape[0]==a.shape[0])
     interior=interior.astype(np.int)
+    assert(interior.ndim==1)
+    assert(s.ndim==3)
+    assert(e.ndim==4)
+    assert(a.ndim==2)
     s0=s[interior]
-    a0=a[(interior,np.arange(interior.size))]
     e0=e[interior]
-    s0+=np.einsum('...i,...ijk',a0,e0)
-    return s0
+    out = np.einsum('...i,...ijk',a,e0)
+    #print e.shape
+    assert(out.shape==s0.shape)
+    out+=s0
+    from getdata import renorm_gt as renorm
+    out,_=renorm(out)
+    return out
+
+def hard_rec_and_rotate(interior,s,a,e,r,camera_r=np.identity(3)):
+    """performs reconstruction via hard assignment to interior models"""
+    #print interior.shape, r.shape
+    assert(interior.shape[0]==r.shape[1])
+    s0=hard_rec(interior,s,a,e)
+    r2=upgrade_r(r.T).transpose(0,2,1)
+    #rot=matrix_multiply(camera_r[np.newaxis,:],r2)
+    return matrix_multiply(r2, s0)
+ 

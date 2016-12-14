@@ -132,13 +132,13 @@ def generateGaussian(Sigma, input_size, position):
 
 def generateHeatMaps(joints, input_size, sigma):
     """Generate heat-map for each of the joints and one overal heat-maps containing
-    all the joints positions."""
-    heatMaps = np.zeros((joints.shape[0]+1, input_size, input_size))
+    all the joints positions. It expects as input a 17 x 2 matrix."""
+    heat_maps = np.zeros((joints.shape[0]+1, input_size, input_size))
     for i in range(joints.shape[0]):
-        heatMaps[i] = generateGaussian(sigma, input_size, joints[i])
+        heat_maps[i] = generateGaussian(sigma, input_size, joints[i])
     # generating last heat maps which contains all joint positions
-    heatMaps[-1] = np.maximum(1.0-heatMaps[0:heatMaps.shape[0]-1].max(axis=0), 0)
-    return heatMaps
+    heat_maps[-1] = np.maximum(1.0-heat_maps[0:heat_maps.shape[0]-1].max(axis=0), 0)
+    return heat_maps
 
 def findCovariance(heatMap, percentage_max=0.05, max_area=100):
         """Given a heat-map representing the likelihood of the joint in the image
@@ -361,21 +361,22 @@ def plotHeatMap(heatMap, secondHeatMaps=[], title=False):
         else:
             plt.suptitle(title)
     plt.axis('off')
+    plt.show()
 
-def plotHeatMaps(heatMaps, secondHeatMaps=[], title=False):
+def plotHeatMaps(heat_maps, second_heat_maps = [], title = False):
     """Plot heat-maps one after the other"""
     # check format
-    if ((heatMaps.shape[0]==heatMaps.shape[1]) or (heatMaps.shape[-1]==18)):
-        heatMaps = heatMaps.transpose(2,0,1)
-    if (len(secondHeatMaps) != 0):
-        if ((secondHeatMaps.shape[0]==secondHeatMaps.shape[1]) or (secondHeatMaps.shape[-1]==18)):
-            secondHeatMaps = secondHeatMaps.transpose(2,0,1)
+    if (heat_maps.shape[0] == heat_maps.shape[1]) or (heat_maps.shape[-1] == 18):
+        heat_maps = heat_maps.transpose(2, 0, 1)
+    if len(second_heat_maps) != 0:
+        if (second_heat_maps.shape[0] == second_heat_maps.shape[1]) or (second_heat_maps.shape[-1] == 18):
+            second_heat_maps = second_heat_maps.transpose(2, 0, 1)
     # plot heat-maps
-    for i in range(heatMaps.shape[0]):
-            if (len(secondHeatMaps) != 0):
-                plotHeatMap(heatMaps[i], secondHeatMaps[i], title)
+    for i in range(heat_maps.shape[0]):
+            if len(second_heat_maps) != 0:
+                plotHeatMap(heat_maps[i], second_heat_maps[i], title)
             else:
-                plotHeatMap(heatMaps[i], secondHeatMaps, title)
+                plotHeatMap(heat_maps[i], second_heat_maps, title)
             plt.waitforbuttonpress()
 
 def getConnections():
@@ -383,7 +384,7 @@ def getConnections():
             [9, 10],[8, 11],[11, 12],[12, 13],[8, 14],[14, 15],[15, 16]]
     return conn
 
-def plotImageJoints(image, joints, joints2=[], h=False):
+def plotImageJoints(image, joints, joints2=[], h=False, line_width = 2, marker_size = 4):
     """Plot the image and the joint positions"""
     
     def getJointColor(j):
@@ -402,8 +403,6 @@ def plotImageJoints(image, joints, joints2=[], h=False):
         return colors[c]
     
     img = convertImgCv2(image)
-    marker_size = 4
-    line_size = 2
     if not checkJointsNonLinearised(joints):
         joints = xyJoints(np.array(joints))
     if (len(joints2) != 0):
@@ -416,7 +415,7 @@ def plotImageJoints(image, joints, joints2=[], h=False):
         conn = getConnections()
         for c in conn:
             cv2.line(img, tuple(joints[c[0]].astype(int)),
-                          tuple(joints[c[1]].astype(int)), getJointColor(c[0]), line_size, 16)
+                          tuple(joints[c[1]].astype(int)), getJointColor(c[0]), line_width, 16)
         for j in range(joints.shape[0]):
             cv2.circle(img, (int(joints[j][0]), int(joints[j][1])),
                        marker_size, getJointColor(j), -1)
@@ -428,12 +427,12 @@ def plotJoints(joints, joints2=[], img=False):
     """Plot the image and the joint positions"""
     if not checkJointsNonLinearised(joints):
         joints = xyJoints(np.array(joints))
-    if (len(joints2) != 0):
+    if len(joints2) != 0:
         joints2 = xyJoints(np.array(joints2).flatten())
     for j in range(joints.shape[0]):
         plt.scatter(joints[:,0],joints[:,1], color='r')
-        if (len(joints2) != 0):
-            plt.scatter(joints2[:,0],joints2[:,1], color='b')
+        if len(joints2) != 0:
+            plt.scatter(joints2[:, 0], joints2[:, 1], color='b')
     axes = plt.gca()
     axes.axis('equal')
     plt.show()
