@@ -81,65 +81,22 @@ def normalise_data(w):
     return d2, m2, mean
 
 
-def select_region_image(image):
-    refPt = []
-
-    def click_and_crop(event, x, y, flags, param):
-        # grab references to the global variables
-        global refPt
-
-        # if the left mouse button was clicked, record the starting
-        # (x, y) coordinates and indicate that cropping is being
-        # performed
-        if event == cv2.EVENT_LBUTTONDOWN:
-            refPt = [(x, y)]
-
-        # check to see if the left mouse button was released
-        elif event == cv2.EVENT_LBUTTONUP:
-            # record the ending (x, y) coordinates and indicate that
-            # the cropping operation is finished
-            refPt.append((x, y))
-
-            # draw a rectangle around the region of interest
-            cv2.rectangle(image, refPt[0], refPt[1], (0, 255, 0), 2)
-            cv2.imshow("image", image)
-
-    clone = image.copy()
-    cv2.namedWindow("image")
-    cv2.setMouseCallback("image", click_and_crop)
-
-    while True:
-        # display the image and wait for a keypress
-        cv2.imshow("image", image)
-        key = cv2.waitKey(1) & 0xFF
-
-        # if the 'r' key is pressed, reset the cropping region
-        if key == ord("r"):
-            image = clone.copy()
-
-        # if the 'c' key is pressed, break from the loop
-        elif key == ord("c"):
-            break
-    cv2.destroyAllWindows()
-
-
-def get_bounding_box(image_path):
+def get_bounding_box(joints, image_path):
     image = cv2.imread(image_path)
-    select_region_image(image)
     img_width = image.shape[1]
     img_height = image.shape[0]
-    b_box = refPt
+    b_box = [joints[0].min(), joints[1].min(), joints[0].max(), joints[1].max()]
 
-    offset_x = b_box[1][0] - b_box[0][0]
-    offset_y = b_box[1][1] - b_box[0][1]
+    offset_x = b_box[2] - b_box[0]
+    offset_y = b_box[3] - b_box[1]
     if offset_x > offset_y:
         offset_y = offset_x
     else:
         offset_x = offset_y
 
     box_points = np.empty(4)
-    box_points[0] = int(b_box[0][0] + (b_box[1][0] - b_box[0][0]) / 2 - offset_x / 2)
-    box_points[1] = int(b_box[0][1] + (b_box[1][1] - b_box[0][1]) / 2 - offset_y / 2)
+    box_points[0] = int(b_box[0] + (b_box[2] - b_box[0]) / 2 - offset_x / 2)
+    box_points[1] = int(b_box[1] + (b_box[3] - b_box[1]) / 2 - offset_y / 2)
     box_points[2] = offset_x
     box_points[3] = offset_y
     # check that are inside the image
@@ -254,24 +211,27 @@ def get_bounding_box(image_path):
 #     return tmp
 
 
-def test_images(net, nn_config, input_dir, output_dir):
+def test_images(net, nn_config, joints, input_dir, output_dir):
     files = [f for f in ut.os.listdir(input_dir) if f.endswith('.jpg')]
+    files.sort()
 
+    idx = 0
     for image_name in files:
+        print 'Image %d\n' % idx
         test_image = input_dir + image_name
         image = cv2.imread(test_image)
 
-        bbox = get_bounding_box(test_image)
+        bbox = get_bounding_box(joints[:,:,idx], test_image)
         in_ch, img_size = preprocess_images(nn_config, image, bbox)
         ut.netForward(net, in_ch)
         layer_name = 'Mconv5_stage6_new'
         out_ch = ut.getOutputLayer(net, layer_name)
         preds = postprocess_heatmaps(nn_config, out_ch, img_size, bbox)
         res_img = ut.plotImageJoints(image, preds)
-        ut.plt.waitforbuttonpress()
+        #ut.plt.waitforbuttonpress()
         ut.plt.close()
         ut.plt.imsave(output_dir + image_name, res_img)
-        print 'Predictions:%r' % preds
+        #print 'Predictions:%r' % preds
 
         # extract 3D information
         lambda_val = 0.05
@@ -285,14 +245,15 @@ def test_images(net, nn_config, input_dir, output_dir):
             (a, res) = uc.reestimate_a(w, e, z, r, default_r[camera], lambda_val * weights)
         mod = uc.build_model(a, e, z).squeeze()
         save_name = output_dir+image_name+'_3d.jpg'
-        ut.plot3DJoints_full(-mod, save_img=save_name)
-        ut.plt.waitforbuttonpress()
+        #ut.plot3DJoints_full(-mod, pbaspect=True, save_img=save_name)
+        ut.plot3DJoints(-mod, save_img=save_name)
+        #ut.plt.waitforbuttonpress()
         ut.plt.close()
-        print mod
+        idx += 1
 
 
 def main():
-    mpii_dir = '/data/MPII/'
+    leeds_dir = '/data/LEEDS/original'
     caffemodel = os.getenv('CAFFE_HOME_CPM') + \
                  '/models/cpm_architecture/prototxt/caffemodel/manifold_diffarch3/to_test/pose_iter_22000.caffemodel'
     prototxt = os.getenv('CAFFE_HOME_CPM') + '/models/cpm_architecture/prototxt/pose_deploy_singleimg.prototxt'
@@ -301,9 +262,12 @@ def main():
     ut.setCaffeMode(nn['GPU'])
     net = ut.loadNetFromPath(caffemodel, prototxt)
 
-    images_dir = mpii_dir + 'images_to_test/'
-    res_dir = mpii_dir + 'images_tested/'
-    test_images(net, nn, images_dir, res_dir)
+    #images_dir = leeds_dir + '/images/'
+    images_dir = leeds_dir + '/tmp/'
+    #res_dir = leeds_dir + '/processed/'
+    res_dir = leeds_dir + '/processed_tmp/'
+    gt_2d = sio.loadmat(leeds_dir + '/joints.mat')['joints']
+    test_images(net, nn, gt_2d, images_dir, res_dir)
 
 
 if __name__ == '__main__':
