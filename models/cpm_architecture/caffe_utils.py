@@ -479,7 +479,7 @@ def plot3DJoints(joints, save_pdf=False, save_img=False, axis_style=True,
     ax = fig.gca(projection = '3d')
     if not pbaspect:
         ax.pbaspect = [prop_x, prop_y, 1]
-        #ax.pbaspect = [1, 1, 1]
+        ax.pbaspect = [1, 1, 1]
 
     # Defining style
     ax.tick_params(axis='both', which='major', labelsize=9)
@@ -511,9 +511,54 @@ def plot3DJoints(joints, save_pdf=False, save_img=False, axis_style=True,
     if save_img:
         fig.savefig(save_img)
 
-
 def plot3DJoints_full(joints, save_pdf=False, save_img=False, axis_style=True,
                       pbaspect=False, axis_off=False, title=False):
+    import mpl_toolkits.mplot3d.axes3d as p3
+
+    def getJointColor(j):
+        colors = [(0, 0, 0), (255, 0, 255), (0, 0, 255), (0, 255, 255), (255, 0, 0), (0, 255, 0)]
+        c = 0
+        if j in range(1, 4):
+            c = 1
+        if j in range(4, 7):
+            c = 2
+        if j in range(9, 11):
+            c = 3
+        if j in range(11, 14):
+            c = 4
+        if j in range(14, 17):
+            c = 5
+        return colors[c]
+
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    conn = getConnections()
+
+    smallest = joints.min()
+    largest = joints.max()
+
+    ax.set_xlim3d(smallest, largest)
+    ax.set_ylim3d(smallest, largest)
+    ax.set_zlim3d(smallest, largest)
+
+    for c in conn:
+        col = '#%02x%02x%02x' % getJointColor(c[0])
+        ax.plot([joints[0, c[0]], joints[0, c[1]]],
+                [joints[1, c[0]], joints[1, c[1]]],
+                [joints[2, c[0]], joints[2, c[1]]], c=col)
+    for j in range(joints.shape[1]):
+        col = '#%02x%02x%02x' % getJointColor(j)
+        ax.scatter(joints[0, j], joints[1, j], joints[2, j], c=col, marker='o', edgecolor=col)
+
+    # Defining style
+    ax.tick_params(axis='both', which='major', labelsize=9)
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+
+def plot3DJoints_full(joints, save_pdf=False, save_img=False, axis_style=True,
+                      axis_off=False, title=False):
     import mpl_toolkits.mplot3d.axes3d as p3
 
     def getJointColor(j):
@@ -580,7 +625,6 @@ def plot3DJoints_full(joints, save_pdf=False, save_img=False, axis_style=True,
             plt.close()
     if save_img:
         fig.savefig(save_img)
-    plt.close('all')
 
 def plot3DJoints_for_video(joints, save_pdf=False, save_img=False, axis_style=True,
                  pbaspect=False, axis_off=False, title=False, max_axis=False):
