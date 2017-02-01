@@ -253,6 +253,11 @@ def test_images(net, nn_config, joints, input_dir, output_dir):
 
 
 def main():
+    # IMPORTANT: the 3D information that is extracted here is extracted using the OLD MODEL
+    #            using a SINGLE CHART. This is done because the manifold layer is still inside the architecture
+    #            and if we import the new modules (upright_cam, etc.) it will fail in estimating the 2D positions.
+    #            Fix: run the 2D estimation first and then separatly the 3D estimation importing the latest modules.
+    #            If needed look at the code in $CAFFE_HOME_CPM/python/prob_model.py to see what to import.
     leeds_dir = '/data/LEEDS/original'
     caffemodel = os.getenv('CAFFE_HOME_CPM') + \
                  '/models/cpm_architecture/prototxt/caffemodel/manifold_diffarch3/to_test/pose_iter_22000.caffemodel'
@@ -262,10 +267,10 @@ def main():
     ut.setCaffeMode(nn['GPU'])
     net = ut.loadNetFromPath(caffemodel, prototxt)
 
-    #images_dir = leeds_dir + '/images/'
-    images_dir = leeds_dir + '/tmp/'
-    #res_dir = leeds_dir + '/processed/'
-    res_dir = leeds_dir + '/processed_tmp/'
+    images_dir = leeds_dir + '/images/'
+    # images_dir = leeds_dir + '/tmp/'
+    res_dir = leeds_dir + '/processed/'
+    # res_dir = leeds_dir + '/processed_tmp/'
     gt_2d = sio.loadmat(leeds_dir + '/joints.mat')['joints']
     test_images(net, nn, gt_2d, images_dir, res_dir)
 
