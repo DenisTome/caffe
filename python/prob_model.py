@@ -334,7 +334,6 @@ class MyCustomLayer(caffe.Layer):
         camera = channel[0,0,1] - 1
         action = channel[0,0,2]
         person = channel[0,0,3]
-#        raise Exception("id:%r\ncamera:%r\naction:%r\nperson:%r" % (idx,camera,action,person))
         return (idx, camera, action, person)
 
     def forward(self, bottom, top):

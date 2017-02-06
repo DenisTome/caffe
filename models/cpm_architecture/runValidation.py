@@ -75,7 +75,7 @@ def postprocessHeatmaps(NN, batch_out, batch_data, batch_info, batch_size):
         loss[b] = np.dot(diff,diff)/(NN['outputSize']*2*(NN['njoints']+1))
     return (err, loss)
 
-def runCaffeOnModel(NN, net, data, masks, iteration, show_iter=10):
+def runCaffeOnModel(NN, net, data, masks, iteration, show_iter=10, layer_name = 'Mconv5_stage6_new'):
     # get just elements from the validation set
     val_idx = []
     for i in range(len(data)):
@@ -112,7 +112,6 @@ def runCaffeOnModel(NN, net, data, masks, iteration, show_iter=10):
                                                          batch_imgch, num_channels, masks)
     
         ut.netForward(net, batch_imgch)
-        layer_name = 'Mconv5_stage6_new'
         batch_out = ut.getOutputLayer(net, layer_name)
         
         if (curr_batch_size > 0):
@@ -154,7 +153,7 @@ def getLossOnValidationSet(NN, models_dir, json_file, masks, prototxt, output, s
         print '  Evaluating iteration: %d' % iterNumber
         print '-------------------------------'
         net = ut.loadNetFromPath(model_dir, prototxt)
-        val = runCaffeOnModel(NN, net, data[0:num_elem:samplingRate], masks, iterNumber)
+        val = runCaffeOnModel(NN, net, data[0:num_elem:samplingRate], masks, iterNumber, layer_name = 'Mconv5_stage6_new')
         results[i] = val
         # save json
         with open(output, 'w+') as out:

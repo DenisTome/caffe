@@ -12,6 +12,7 @@ import stat
 import numpy as np
 from mpldatacursor import datacursor
 
+
 def parse_log(path_to_log, val_filename = []):
     """Parse log file"""
 
@@ -30,7 +31,7 @@ def parse_log(path_to_log, val_filename = []):
     with open(path_to_log) as f:
         
         for line in f:
-            if ('metadata =' in line):
+            if 'metadata =' in line:
                 continue
             if base_lr == -1:
                 base_lr_match = regex_base_lr.search(line)
@@ -54,7 +55,7 @@ def parse_log(path_to_log, val_filename = []):
             train_data = parse_line(regex_train_output, train_data, line, loss_value, iteration)
     
     if not val_filename:
-        val_data = dict([('iteration',[]), ('loss_iter',[]), ('loss_stage',[]), ('mpepj',[]), ('stage',[])])
+        val_data = dict([('iteration', []), ('loss_iter', []), ('loss_stage', []), ('mpepj', []), ('stage', [])])
     else:
         with open(val_filename) as infile:
             val_data = json.load(infile)
@@ -75,8 +76,9 @@ def parse_line(regex_obj, data, line, loss_iter, iteration):
         data['stage'].append(stage)
     return data
 
+
 def combine_data(train, test, new_train, new_test, merge):
-    if (merge == 0):
+    if merge == 0:
         last_iter = train['iteration'][-1]+ 1
     else:
         last_iter = merge
@@ -87,7 +89,7 @@ def combine_data(train, test, new_train, new_test, merge):
             del train['loss_stage'][-1]
             del train['stage'][-1]
             
-    if (new_train['iteration'][0] > 0):
+    if new_train['iteration'][0] > 0:
         last_iter = 0
         
     for i in range(len(new_train['iteration'])):
@@ -96,7 +98,7 @@ def combine_data(train, test, new_train, new_test, merge):
         train['loss_stage'].append(new_train['loss_stage'][i])
         train['stage'].append(new_train['stage'][i])
         
-    if (len(test['iteration']) > 0):
+    if len(test['iteration']) > 0:
         last_iter = test['iteration'][-1] + 1
         for i in range(len(new_test)):
             test['iteration'].append(last_iter + new_test['iteration'][i])
@@ -105,6 +107,7 @@ def combine_data(train, test, new_train, new_test, merge):
             test['mpepj'].append(new_test['mpepj'][i])
             test['stage'].append(new_test['stage'][i])
     return train, test
+
 
 def smoothed_data(x, y, batch_size):
     smoothed_x = []
@@ -120,8 +123,9 @@ def smoothed_data(x, y, batch_size):
     smoothed_x.append(x[-1])
     smoothed_y.append(np.mean(y[i*batch_size:]))
     return smoothed_x, smoothed_y
-    
-def mergeLogFiles(filenames, out_filename, merge):
+
+
+def merge_log_files(filenames, out_filename, merge):
     regex_iteration = re.compile('Iteration (\d+)')
     out_file = open(out_filename,"w")
     
@@ -129,17 +133,17 @@ def mergeLogFiles(filenames, out_filename, merge):
         with open(filenames[i]) as f:
             curr_iter = -1
             for line in f:
-                if (merge[i] > 0):
+                if merge[i] > 0:
                     iter_match = regex_iteration.search(line)
                     if iter_match:
                         curr_iter = int(iter_match.group(1))
-                    if (curr_iter == merge[i]):
+                    if curr_iter == merge[i]:
                         break
                 out_file.write(line)
     out_file.close()
     
 
-def plotData(train, val, nstages, main_title, avg_line = False, avg_batch_size = 5):
+def plot_data(train, val, nstages, main_title, avg_line = False, avg_batch_size = 5):
     x = []
     y = []
     count = 0
@@ -151,10 +155,10 @@ def plotData(train, val, nstages, main_title, avg_line = False, avg_batch_size =
     plt.clf()
     plt.subplot(211)
     subtitle = 'Overall loss on all stages (min = %.4f; iter = %d)' % (min(y), x[y.index(min(y))])
-    plt.semilogy(x,y,'r-', linewidth=2.0, label='Train')
+    plt.semilogy(x, y, 'r-', linewidth=2.0, label='Train')
     if avg_line:
         x, y = smoothed_data(x, y, avg_batch_size)
-        plt.semilogy(x,y,'b--', linewidth=2.0, label='Smoothed')
+        plt.semilogy(x, y, 'b--', linewidth=2.0, label='Smoothed')
     plt.grid()
     plt.xlabel('NUM ITERATIONS')
     plt.ylabel('LOSS')
@@ -170,12 +174,12 @@ def plotData(train, val, nstages, main_title, avg_line = False, avg_batch_size =
         y[i-1].append(train['loss_stage'][count])
         count += 1
     plt.subplot(212)
-    plt.semilogy(x[0],y[0],linewidth=2.0,label='stage1')
-    plt.semilogy(x[1],y[1],linewidth=2.0,label='stage2')
-    plt.semilogy(x[2],y[2],linewidth=2.0,label='stage3')
-    plt.semilogy(x[3],y[3],linewidth=2.0,label='stage4')
-    plt.semilogy(x[4],y[4],linewidth=2.0,label='stage5')
-    plt.semilogy(x[5],y[5],linewidth=2.0,label='stage6')
+    plt.semilogy(x[0], y[0], linewidth=2.0, label='stage1')
+    plt.semilogy(x[1], y[1], linewidth=2.0, label='stage2')
+    plt.semilogy(x[2], y[2], linewidth=2.0, label='stage3')
+    plt.semilogy(x[3], y[3], linewidth=2.0, label='stage4')
+    plt.semilogy(x[4], y[4], linewidth=2.0, label='stage5')
+    plt.semilogy(x[5], y[5], linewidth=2.0, label='stage6')
     plt.grid()
     plt.xlabel('NUM ITERATIONS')
     plt.ylabel('LOSS')
@@ -188,7 +192,7 @@ def plotData(train, val, nstages, main_title, avg_line = False, avg_batch_size =
     datacursor(bbox=None, display='single', formatter="Iter:{x:.0f}\nLoss:{y:.2f}".format)
     plt.show()
 
-    if (len(val['iteration']) == 0):
+    if len(val['iteration']) == 0:
         return
         
     x = []
@@ -231,16 +235,16 @@ def main():
     merge = [0]
     train, val, base_lr, stepsize = parse_log(filename[0], val_filename)
     print 'Num iterations file = %d' % (train['iteration'][-1])
-    if (len(filename) > 1):
+    if len(filename) > 1:
         for i in range(1,len(filename)):
             curr_tr, curr_ts, base_lr_, stepsize_ = parse_log(filename[i], val_filename)
             print 'Num iterations file = %d' % (curr_tr['iteration'][-1])
             train, val = combine_data(train, val, curr_tr, curr_ts, merge[i-1])
     main_title = 'Training with:\nbase_lr = %f; stepsize = %d; lr_mul = %f\nFinetuning: trial_5; Iter = %d ' % (base_lr, stepsize, stn_lrm, finetune_iter)
-    plotData(train, val, nstages, main_title, avg_line = True, avg_batch_size = 150)
+    plot_data(train, val, nstages, main_title, avg_line = True, avg_batch_size = 350)
     
-    if (len(filename) > 1):
-        mergeLogFiles(filename,'prototxt/overall.txt', merge)
+    if len(filename) > 1:
+        merge_log_files(filename,'prototxt/overall.txt', merge)
 
 if __name__ == '__main__':
     main()

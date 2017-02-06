@@ -61,10 +61,6 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
                 conv_name = 'conv%d_stage%d' % (conv_counter, stage)
             else:
                 conv_name = 'Mconv%d_stage%d' % (conv_counter, stage)
-            #if stage == 1:
-            #    lr_m = 5
-            #else:
-            #    lr_m = 1
             lr_m = 1e-3 # 1e-3 (best res so far)
             if ((stage == 1 and conv_counter == 7) or
                 (stage > 1 and state != 'image' and (conv_counter in [1, 5]))):
@@ -72,13 +68,6 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
                 lr_m = 1 #1e-2
                 decay_mult = 1
             
-#            if (stage <= 4):
-#                lr_m = 0
-#                decay_mult = 0
-            # additional for python layer
-#            if (stage > 1 and state != 'image' and (conv_counter == 1)):
-#                conv_name = '%s_mf' % conv_name
-#                lr_m = 1 #1e-1
             n.tops[conv_name] = L.Convolution(n.tops[last_layer], kernel_size=kernel[l],
                                                   num_output=outCH[l], pad=int(math.floor(kernel[l]/2)),
                                                   param=[dict(lr_mult=lr_m, decay_mult=decay_mult), dict(lr_mult=lr_m*2, decay_mult=0)],
@@ -102,24 +91,17 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             last_manifold = 'probmodel_stage%d' % stage
             last_merg = 'merge_hm_stage%d' % stage
             debug_mode = 0
-#            if (stage == 5):
-#                debug_mode = 1
             manifold_current_stage = True
+
             if (stage >= 4):
                 merge_init_avg = True
             
-            # TODO: remove
-            if stage==5:
-                debug_mode = 1
-            # TODO: change it back
-#            if stage == 4:
-#                debug_mode = 4
+            # if stage==5:
+            #     debug_mode = 1
             parameters = '{"njoints": 17,"sigma": 1, "debug_mode": %r, "max_area": 100, "percentage_max": 3, "train": %u, "Lambda": %.3f }' % (debug_mode, not deploy, 0.05)
-            # DONE: change it back
-            # if manifold_current_stage:
-            n.tops[last_manifold] = L.Python(n.tops[last_layer],n.tops[label_name[2]],python_param=dict(module='prob_model',layer='MyCustomLayer',param_str=parameters))#,loss_weight=1)
-#            n.tops[last_manifold] = L.Python(n.tops[label_name[1]],n.tops[label_name[2]],python_param=dict(module='newheatmaps',layer='MyCustomLayer',param_str=parameters))#,loss_weight=1)
-            init_str = 'zero'            
+            n.tops[last_manifold] = L.Python(n.tops[last_layer],n.tops[label_name[2]],python_param=dict(module='prob_model',layer='MyCustomLayer',param_str=parameters))
+
+            init_str = 'zero'
             if merge_init_avg:
                 init_str = 'avg'
             merge_lr = 5e-2
