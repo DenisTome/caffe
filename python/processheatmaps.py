@@ -94,6 +94,7 @@ class MergeHeatMaps(caffe.Layer):
         avg2 = self.lr*res2.sum()
         self.blobs[0].diff[...] = [avg1, avg2] 
         # raise Exception('Diff received is %r then it becomes %r' % (np.average(top[0].diff[...]) ,avg1))
-        # bottom[0].diff[...] = np.zeros(bottom[0].data.shape)
+        # print 'weights for input 0: %r \t and input 1: %r' % (self.blobs[0].data[0],self.blobs[0].data[1])
+        bottom[0].diff[...] = top[0].diff[...]*self.blobs[0].data[0]
         
         

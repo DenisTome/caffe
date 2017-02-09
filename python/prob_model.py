@@ -84,11 +84,16 @@ class MyCustomLayer(caffe.Layer):
         the center of the heat-map as predicted joint position."""
         # heatMap = ndimage.gaussian_filter(heatMap, sigma=1)
         idx = np.where(heatMap == heatMap.max())
-        x = idx[1][0]
-        y = idx[0][0]
-        if (heatMap[y,x]==0):
-            x = int(heatMap.shape[1]/2)
-            y = int(heatMap.shape[0]/2)
+        try:
+            x = idx[1][0]
+            y = idx[0][0]
+            if (heatMap[y, x] == 0):
+                x = int(heatMap.shape[1] / 2)
+                y = int(heatMap.shape[0] / 2)
+        except:
+            print 'FAILURE!\n\nGiven heat maps is a set of NaN\n\n'
+            x = int(heatMap.shape[1] / 2)
+            y = int(heatMap.shape[0] / 2)
         return x,y
 
     def generateGaussian(self, pos, mean, Sigma):

@@ -356,7 +356,7 @@ layer {
 layer {
   name: "loss_stage1"
   type: "EuclideanLoss"
-  bottom: "conv7_stage1_new"
+  bottom: "merge_hm_stage1"
   bottom: "label_1st_lower"
   top: "loss_stage1"
 }
@@ -713,7 +713,7 @@ layer {
 layer {
   name: "loss_stage2"
   type: "EuclideanLoss"
-  bottom: "Mconv5_stage2_new"
+  bottom: "merge_hm_stage2"
   bottom: "label_lower"
   top: "loss_stage2"
 }
@@ -941,7 +941,7 @@ layer {
 layer {
   name: "loss_stage3"
   type: "EuclideanLoss"
-  bottom: "Mconv5_stage3_new"
+  bottom: "merge_hm_stage3"
   bottom: "label_lower"
   top: "loss_stage3"
 }
@@ -1169,7 +1169,7 @@ layer {
 layer {
   name: "loss_stage4"
   type: "EuclideanLoss"
-  bottom: "Mconv5_stage4_new"
+  bottom: "merge_hm_stage4"
   bottom: "label_lower"
   top: "loss_stage4"
 }
@@ -1397,7 +1397,7 @@ layer {
 layer {
   name: "loss_stage5"
   type: "EuclideanLoss"
-  bottom: "Mconv5_stage5_new"
+  bottom: "merge_hm_stage5"
   bottom: "label_lower"
   top: "loss_stage5"
 }
