@@ -98,7 +98,7 @@ def setLayers(data_source, batch_size, layername, kernel, stride, outCH, label_n
             
             # if stage==5:
             #     debug_mode = 1
-            parameters = '{"njoints": 17,"sigma": 1, "debug_mode": %r, "max_area": 100, "percentage_max": 3, "train": %u, "Lambda": %.3f }' % (debug_mode, not deploy, 0.05)
+            parameters = '{"njoints": 17,"sigma": 1, "debug_mode": %r, "max_area": 100, "percentage_max": 3, "name": %r, "Lambda": %.3f }' % (debug_mode, last_manifold, 0.05)
             n.tops[last_manifold] = L.Python(n.tops[last_layer],n.tops[label_name[2]],python_param=dict(module='prob_model',layer='MyCustomLayer',param_str=parameters))
 
             init_str = 'zero'

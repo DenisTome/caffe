@@ -382,7 +382,7 @@ def get_rotation_funky_offset3d(np.ndarray[DTYPE_t, ndim=3]w_total,
 
     tot=0
     old_tot=0
-    print w_total.shape[0],w_total.shape[1],w_total.shape[2]
+    #print w_total.shape[0],w_total.shape[1],w_total.shape[2]
     check=np.arange(8)*np.pi/4.0
     for i in xrange(w_total.shape[0]):
         w=w_total[i]

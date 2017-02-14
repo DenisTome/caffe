@@ -538,13 +538,13 @@ def parameter3d_one_shot_old(dat,rank):
 
     for i in xrange(1, rank+1):
         for j in xrange(3):
-            print "1:" +str(error3d(dat,inv_rot,z,a,e))
+            #print "1:" +str(error3d(dat,inv_rot,z,a,e))
             matrix_multiply(inv_rot.transpose(2, 0, 1), dat[:, :2], shape[:, ::2])
             shape[:, 1] = dat[:, 2]
             mean, a, e = PCA(shape.reshape(frames, -1),i)
             z = mean.reshape(3, -1)
             e = e.reshape(-1, 3, z.shape[1])
-            print "2:"+str(error3d(dat,inv_rot,z,a,e))
+            #print "2:"+str(error3d(dat,inv_rot,z,a,e))
             if j ==-1: #Then reset rotations and start again from 0
                 inv_rot = reestimate_r3d(dat[:, :2], z[::2], a, e[:, ::2]).transpose(1,0,2)
             else:
@@ -688,7 +688,7 @@ def parameter3d_one_shot(dat,rank):
     e = np.zeros((1, 3, dat.shape[2]))
     r=np.empty((dat.shape[0],3,3))
     r[:]=np.identity(3)
-    print "0:" +str(error3d(dat,r,z,a,e))
+    #print "0:" +str(error3d(dat,r,z,a,e))
     inv_rot=new_rot (r,dat,a,e,z)
     shape = np.empty((frames, 3, dat.shape[-1]))
     #d=dat.reshape(frames*3,dat.shape[-1])
@@ -696,18 +696,18 @@ def parameter3d_one_shot(dat,rank):
     mask=np.ones_like(dat)
     for i in xrange(1, rank+1):
         for j in xrange(10):
-            print str(i)+" "+str(j)+" a: " +str(error3d(dat,inv_rot,z,a,e))
+            #print str(i)+" "+str(j)+" a: " +str(error3d(dat,inv_rot,z,a,e))
             matrix_multiply(inv_rot, dat, shape)
             assert(np.all(np.isfinite(shape)))
             mean, a, e = PCA(shape.reshape(frames, -1),i)
             z = mean.reshape(3, -1)
             e = e.reshape(-1, 3, z.shape[1])
-            print str(i)+" "+str(j)+" b: "+str(error3d(dat,inv_rot,z,a,e))
+            #print str(i)+" "+str(j)+" b: "+str(error3d(dat,inv_rot,z,a,e))
             inv_rot = new_rot(inv_rot,dat, a, e,z)
         zt=np.ascontiguousarray(z.T)
         ee=np.ascontiguousarray(e.transpose(2,0,1))
         r=np.ascontiguousarray(inv_rot.transpose(0,2,1)[:, :2,0])
-        print str(i)+" c*: " +str(error3d(dat,inv_rot,z,a,e))
+        #print str(i)+" c*: " +str(error3d(dat,inv_rot,z,a,e))
         # TODO: restore
         if i==1 : #or i==rank:
             ceres.ba_e3d(dat, mask, r, zt, a, ee,
@@ -717,7 +717,7 @@ def parameter3d_one_shot(dat,rank):
         e=ee.transpose(1,2,0)
         inv_rot=upgrade_r(r).transpose(0,2,1)
         z=zt.T
-        print str(i)+" c: " +str(error3d(dat,inv_rot,z,a,e))
+        #print str(i)+" c: " +str(error3d(dat,inv_rot,z,a,e))
 
 
     matrix_multiply(inv_rot, dat, shape)
@@ -725,7 +725,7 @@ def parameter3d_one_shot(dat,rank):
     mean, a, e = PCA2(shape.reshape(frames, -1),rank)
     z = mean.reshape(3, -1)
     e = e.reshape(-1, 3, z.shape[1])
-    print str(i)+" d: " +str(error3d(dat,inv_rot,z,a,e))
+    #print str(i)+" d: " +str(error3d(dat,inv_rot,z,a,e))
 
 
             #print a.shape, e.shape
@@ -762,7 +762,7 @@ def parameter3d_prob_one_shot(dat,rank):
     e = np.zeros((1, 3, dat.shape[2]))
     r=np.empty((dat.shape[0],3,3))
     r[:]=np.identity(3)
-    print "0:" +str(error3d(dat,r,z,a,e))
+    #print "0:" +str(error3d(dat,r,z,a,e))
     inv_rot=new_rot (r,dat,a,e,z)
     shape = np.empty((frames, 3, dat.shape[-1]))
     #d=dat.reshape(frames*3,dat.shape[-1])
@@ -778,7 +778,7 @@ def parameter3d_prob_one_shot(dat,rank):
             e = e.reshape(-1, 3, z.shape[1])
             s=np.real(sigma2[:-1])**-2
             a*=(s/(0.005+s))
-            print str(i)+" "+str(j)+" b: "+str(error3d(dat,inv_rot,z,a,e))
+            #print str(i)+" "+str(j)+" b: "+str(error3d(dat,inv_rot,z,a,e))
             inv_rot = new_rot(inv_rot,dat, a, e,z)
         #print str(i)+" c*: " +str(error3d(dat,inv_rot,z,a,e))
         # TODO: restore
@@ -794,7 +794,7 @@ def parameter3d_prob_one_shot(dat,rank):
             e=ee.transpose(1,2,0)
             inv_rot=upgrade_r(r).transpose(0,2,1)
             z=zt.T
-            print str(i)+" c: " +str(error3d(dat,inv_rot,z,a,e))
+            #print str(i)+" c: " +str(error3d(dat,inv_rot,z,a,e))
 
 
     matrix_multiply(inv_rot, dat, shape)
@@ -802,7 +802,7 @@ def parameter3d_prob_one_shot(dat,rank):
     mean, a, e = PCA2(shape.reshape(frames, -1),rank)
     z = mean.reshape(3, -1)
     e = e.reshape(-1, 3, z.shape[1])
-    print str(i)+" d: " +str(error3d(dat,inv_rot,z,a,e))
+    #print str(i)+" d: " +str(error3d(dat,inv_rot,z,a,e))
 
 
             #print a.shape, e.shape
@@ -831,9 +831,9 @@ def parameter_refine3d(dat, z, a, e, inv_rot, its=10,
 
 
     for i in xrange(its):
-        print "1:" +str(error3d(dat,inv_rot,z,a,e))
+        #print "1:" +str(error3d(dat,inv_rot,z,a,e))
         inv_rot = reestimate_r3d(dat[:, :2], z[::2], a, e[:, ::2], inv_rot[:, 0]).transpose(1,0,2)
-        print "2:"+str(error3d(dat,inv_rot,z,a,e))
+        #print "2:"+str(error3d(dat,inv_rot,z,a,e))
         shape = np.empty((frames, 3, dat.shape[-1]))
         matrix_multiply(inv_rot.transpose(2, 0, 1), dat[:, :2], shape[:, ::2])
         shape[:, 1] = dat[:, 2]
@@ -842,7 +842,7 @@ def parameter_refine3d(dat, z, a, e, inv_rot, its=10,
         z = mean.reshape(3, -1)
         e = e.reshape(-1, 3, z.shape[1])
 
-    print "3:"+str(error3d(dat,inv_rot,z,a,e))
+    #print "3:"+str(error3d(dat,inv_rot,z,a,e))
 
         #print a.shape, e.shape
     return inv_rot, z, a, e
@@ -889,7 +889,7 @@ def parameter_refine(xzdat, z, a, e, its=10, r=False, compactness=0,
 #            print i, cost, inc,cost-inc
 #            cost #+=inc
             if not (old_cost[0]*1.0001 >= cost):
-                print weights, compactness
+                #print weights, compactness
                 assert False
      #       if i % 3:
             old_cost[0] = cost
@@ -1052,8 +1052,8 @@ def make_unary2(w,a,e,z,r,compactness=0):
    # print w.shape,a.shape,e.shape,z.shape,r.shape
     assert(a.shape[0]==e.shape[0])
     assert(a.shape[0]==z.shape[0])
-    if a.shape[0]!=r.shape[0]:
-        print a.shape, r.shape
+    #if a.shape[0]!=r.shape[0]:
+        #print a.shape, r.shape
     assert(a.shape[0]==r.shape[0])
 
     #(714, 41) (105, 1) (179, 1, 3, 41) (179, 3, 41) (179, 2, 357)
@@ -1236,12 +1236,12 @@ def solve(w, s,a0, e, r, gnhood, MDL=0, ex_weight=0.25,
                     #unary[0]=make_unary2(w,a[0],e[0],s[0],r[0],0)
                     unary[0]=make_unary2(w,a[0],e[0],s[0],r[0],compactness)
                     cc=cost(new_mask)-MDL
-                    print "Values:",cc,cost(mask),cost(m),np.abs(check.sum()/cc)
+                    #print "Values:",cc,cost(mask),cost(m),np.abs(check.sum()/cc)
                     if not (0.999<np.abs(check.dot(weights**2)/cc)<1.001):
                         print weights,compactness
                         assert False
-                    print cost(new_mask),cost(mask),cost(m)
-                    print i,old_cost,cost(m)
+                    #print cost(new_mask),cost(mask),cost(m)
+                    #print i,old_cost,cost(m)
                     assert(old_cost+0.0001>=cost(m))
 
         unary[0]=make_unary2(w,a[0],e[0],s[0],r[0],compactness)

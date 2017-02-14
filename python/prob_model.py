@@ -57,7 +57,7 @@ class MyCustomLayer(caffe.Layer):
         self.debug_mode = yaml.load(self.param_str)["debug_mode"]
         self.max_area = yaml.load(self.param_str)["max_area"]
         self.percentage_max = yaml.load(self.param_str)["percentage_max"]*0.01
-        self.train = bool(yaml.load(self.param_str)["train"])
+        self.name = (yaml.load(self.param_str)["name"])
         self.Lambda = yaml.load(self.param_str)["Lambda"]
         (self.default_r, self.e, self.mu, self.sigma_model) = self.load_parameters()
 
@@ -92,6 +92,7 @@ class MyCustomLayer(caffe.Layer):
                 y = int(heatMap.shape[0] / 2)
         except:
             print 'FAILURE!\n\nGiven heat maps is a set of NaN\n\n'
+            print 'Layer: %r\n\n' % self.name
             x = int(heatMap.shape[1] / 2)
             y = int(heatMap.shape[0] / 2)
         return x,y

@@ -287,7 +287,7 @@ layer {
   python_param {
     module: "prob_model"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 0, \"Lambda\": 0.050 }"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"name\": \'probmodel_stage1\', \"Lambda\": 0.050 }"
   }
 }
 layer {
@@ -637,7 +637,7 @@ layer {
   python_param {
     module: "prob_model"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 0, \"Lambda\": 0.050 }"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"name\": \'probmodel_stage2\', \"Lambda\": 0.050 }"
   }
 }
 layer {
@@ -858,7 +858,7 @@ layer {
   python_param {
     module: "prob_model"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 0, \"Lambda\": 0.050 }"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"name\": \'probmodel_stage3\', \"Lambda\": 0.050 }"
   }
 }
 layer {
@@ -1079,7 +1079,7 @@ layer {
   python_param {
     module: "prob_model"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 0, \"Lambda\": 0.050 }"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"name\": \'probmodel_stage4\', \"Lambda\": 0.050 }"
   }
 }
 layer {
@@ -1300,7 +1300,7 @@ layer {
   python_param {
     module: "prob_model"
     layer: "MyCustomLayer"
-    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"train\": 0, \"Lambda\": 0.050 }"
+    param_str: "{\"njoints\": 17,\"sigma\": 1, \"debug_mode\": 0, \"max_area\": 100, \"percentage_max\": 3, \"name\": \'probmodel_stage5\', \"Lambda\": 0.050 }"
   }
 }
 layer {
