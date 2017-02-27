@@ -100,3 +100,8 @@ LOCK
 LOG*
 CURRENT
 MANIFEST-*
+
+#unignore some results
+!models/cpm_architecture/computed_res/*.mat
+!models/cpm_architecture/computed_res/bogo/*.mat
+!models/cpm_architecture/computed_res/yasin/*.mat
