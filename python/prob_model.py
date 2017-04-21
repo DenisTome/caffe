@@ -292,6 +292,9 @@ class MyCustomLayer(caffe.Layer):
         proj[:, :2] = (proj[:, :2] + w2 * 1.55 * weights) / (1 + 1.55 * weights)
         proj[:, 2] *= 1
 
+        # TODO: remove
+        sio.savemat('/home/denitome/Desktop/prob_model_res.mat', {'R': r2, 'a': a2, 'e': e[best]})
+
         p2d = proj[:, :2]
         return p2d
 
@@ -350,6 +353,13 @@ class MyCustomLayer(caffe.Layer):
             points  = self.manifoldDataConversion(input_heatMaps[b], camera)
             # TODO: remove this part
             heatMaps[b] = self.generateHeatMaps(points, cov_matrices=False)
+
+            #TODO: remove tmp
+            Y = np.zeros((self.num_joints, 2))
+            for j in range(self.num_joints):
+                Y[j,:], _ = self.findMeanCovariance(input_heatMaps[b,j])
+            sio.savemat('/home/denitome/Desktop/test_case_hm.mat',{'Y':Y, 'Y_hat':points, 'Y_hm':input_heatMaps[0], 'Y_hat_hm':heatMaps[0]})
+            raise Exception('tmp')
 
             if (self.debug_mode):
                 for j in range(self.num_channels):

@@ -32,14 +32,14 @@ def centre(m):
 
 def centre3d(m):
     return (m - m.mean(0)).T
-          
+
 def normalise_data(w, w3d=[]):
     """Normalise data by centering all the 2d skeletons (0,0) and by rescaling
     all of them such that the height is 2.0 (expressed in meters).
     """
     w = w.reshape(-1,2).transpose(1,0)
     (d2, mean) = centre(w)
-    
+
     m2 = d2[1,:].min(0)/2.0
     m2 = m2-d2[1,:].max(0)/2.0
     crap = (m2 == 0)
@@ -49,28 +49,28 @@ def normalise_data(w, w3d=[]):
 
     if len(w3d)==0:
         return (d2, m2, mean)
-    
+
     # Normalise 3D
     w3d = centre3d(w3d)
     m3=w3d[2,:].min(0)/2.0 #Height normalisation
     m3=m3-w3d[2,:].max(0)/2.0
     w3d /= m3
-    
+
     return (d2, m2, mean), (w3d, m3)
 
 def normalise_data2(d2):
     """Normalise data by centering all the 2d skeletons (0,0) and by rescaling
     all of them such that the height is 2.0 (expressed in meters).
     """
-    
+
     def centre_all(m):
         if m.ndim == 2:
             return centre(m)
         return (m.transpose(2, 0, 1) - m.mean(2)).transpose(1, 2, 0), m.mean(2)
-    
+
     d2, mean = centre_all(d2.transpose(0,2,1))
     m2=d2[:,1,:].min(1)/2.0 #Height normalisation
-    m2=m2-d2[:,1,:].max(1)/2.0    
+    m2=m2-d2[:,1,:].max(1)/2.0
     crap=m2==0
     m2[crap]=1.0
     d2/= m2[:,np.newaxis,np.newaxis]
@@ -290,7 +290,7 @@ def getIndex(data, camera=1, person=9, action=2, fno=0):
 ## SET ENVIRONMENT
 caffemodel = ut.getCaffeCpm() + '/prototxt/caffemodel/manifold_diffarch3/pose_iter_22000.caffemodel'
 prototxt = ut.getCaffeCpm() + '/prototxt/pose_deploy_singleimg.prototxt'
-output_dir = '/home/denitome/Desktop/imgs/tmp/'
+output_dir = '/home/denitome/Desktop/img/'
 checkFilesExistance(prototxt, caffemodel)
 
 NN = ut.load_configuration(gpu=True)
